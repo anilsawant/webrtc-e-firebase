@@ -7,7 +7,32 @@ let setupHome = function () {
   setupContactsBook();
   setupVideoCall();
 
-  let btnLogout = document.getElementById('btnLogout');
+  let btnLogout = document.getElementById('btnLogout'),
+      btnTakeBreak = document.getElementById('btnTakeBreak');
+
+  btnTakeBreak.addEventListener('click', function (evt) {
+    if (evt.target.textContent == 'Take Break') {
+      window.myFirebaseObj.takeBreak(function (err, result) {
+        if (err) {
+          console.log("ERROR: Take break", err);
+          return;
+        }
+        if (result == true) {
+          evt.target.textContent = 'End Break';
+        }
+      });
+    } else {
+      window.myFirebaseObj.endBreak(function (err, result) {
+        if (err) {
+          console.log("ERROR: End break", err);
+          return;
+        }
+        if (result == true) {
+          evt.target.textContent = 'Take Break';
+        }
+      });
+    }
+  });
   btnLogout.addEventListener('click', function (evt) {
     evt.preventDefault();
     window.myFirebaseObj.logout(function (err, result) {
@@ -16,7 +41,7 @@ let setupHome = function () {
         return;
       }
       if (result == true) {
-        console.log("SUCCESS: Logout.");
+        window.user = null;
       }
     });
   });
@@ -35,13 +60,17 @@ let setupContactsBook = function () {
 
   txtSearchUsers.value = '';
   txtSearchUsers.setAttribute('disabled',true);
-  window.receiversReference.on('value', function (snap) {
-    window.contacts = snap.val();
-    if (window.contacts) {
-      window.contactIds = Object.keys(window.contacts);
-      txtSearchUsers.removeAttribute('disabled');
-    }
-  });
+  if (window.userReference) {
+    window.userReference.on('value', function (snap) {
+      window.contacts = snap.val();
+      if (window.contacts) {
+        window.contactIds = Object.keys(window.contacts);
+        txtSearchUsers.removeAttribute('disabled');
+      }
+    });
+  } else {
+    console.log("ERROR: Cannot setup contacts book. userRef is", userRef);
+  }
 
   btnToggleLeftSlider.addEventListener('click', function () {
     toggleLeftSlider();
@@ -61,23 +90,27 @@ let setupContactsBook = function () {
         let matchedContacts = [];
         searchContactsList.innerHTML = '';
         $searchContainer.slideUp();
-        for (id of window.contactIds) {
-          if (id.includes(qId)) {
-            matchedContacts.push(window.contacts[id]);
+        if (window.contactIds) {
+          for (id of window.contactIds) {
+            if (id.includes(qId)) {
+              matchedContacts.push(window.contacts[id]);
+            }
           }
+          searchContainer.querySelector('.header .title').textContent = matchedContacts.length + " contact(s) found!";
+          for (contact of matchedContacts) {
+            let contactLi = document.createElement('li');
+            contactLi.className = 'contact';
+            contactLi.innerHTML = `<span class="glyphicon glyphicon-user"></span>
+                                  ${contact.name} (${contact.userId})
+                                  <span data-callerid='${contact.userId}' class="glyphicon glyphicon-earphone"></span>`;
+            searchContactsList.appendChild(contactLi);
+          }
+          $ownContactsContainer.hide(function () {
+            $searchContainer.slideDown();
+          });
+        } else {
+          console.log("ERROR: No contacts to search.", window.contactIds);
         }
-        searchContainer.querySelector('.header .title').textContent = matchedContacts.length + " contact(s) found!";
-        for (contact of matchedContacts) {
-          let contactLi = document.createElement('li');
-          contactLi.className = 'contact';
-          contactLi.innerHTML = `<span class="glyphicon glyphicon-user"></span>
-                                ${contact.name} (${contact.userId})
-                                <span data-callerid='${contact.userId}' class="glyphicon glyphicon-earphone"></span>`;
-          searchContactsList.appendChild(contactLi);
-        }
-        $ownContactsContainer.hide(function () {
-          $searchContainer.slideDown();
-        });
       } else {
         alert('Enter an id with minimun 3 characters to search.')
       }
@@ -96,7 +129,9 @@ let setupContactsBook = function () {
     if (evt.target.className.includes('glyphicon-earphone')) {
       let callerId = evt.target.getAttribute('data-callerid');
       if (callerId) {
-        if (window.$videoOverlay) {
+        if (callerId == window.user.userId) {
+          alert("Smart guy! Cannot call yourself.")
+        } else {
           window.userReference.child(callerId).once('value', function (snap) {
             let caller = snap.val();
             if (caller) {
@@ -110,7 +145,7 @@ let setupContactsBook = function () {
                 }
               });// ./ end initiate call()
             }
-          });
+          });// ./ end get caller details
         }
       } else {
         console.log("Can't call to ", callTo);
@@ -133,7 +168,7 @@ let hideLeftSlider = function () {
 }
 let setupVideoCall = function () {
   let videoOverlay = document.querySelector('.video-overlay'),
-      localVideo = window.localVideo = videoOverlay.querySelector('#localVideo'),
+      localVideo = window.localVideoElm = videoOverlay.querySelector('#localVideo'),
       remoteVideo = window.remoteVideoElm = videoOverlay.querySelector('#remoteVideo'),
       btnEndCall = window.btnEndCall = videoOverlay.querySelector('.glyphicon-remove-sign');
 
@@ -142,8 +177,10 @@ let setupVideoCall = function () {
     endCallHandler(true);
   });
 }
+
 let initiateCall = function (caller, done) {
   if (done && typeof done == 'function') {
+    hideLeftSlider();
     window.$videoOverlay.find('.call-msg').text("Calling " + (caller.name || '') + "...");
     window.$videoOverlay.fadeIn(function () {
       createInitiatorPeerAndOffer(function (err, rtcOfferSDP) {
@@ -163,7 +200,6 @@ let initiateCall = function (caller, done) {
           }
           window.myFirebaseObj.offerCall(callProps, function (err, callData) {
             if (err) {
-              console.log("Make call error",err);
               if (err.code == "NOT_FOUND") {
                 console.log("Receiver " + caller.userId + " was not found.");
                 endCallHandler(false);
@@ -252,12 +288,99 @@ let initiateCall = function (caller, done) {
     console.log("ERROR: Incorrect usage. User callback missing.");
   }
 }
+let receiveCall = function (caller, offerSDP, done) {
+  if (done && typeof done == 'function') {
+    window.$videoOverlay.find('.call-msg').text("Call from " + caller.userId + "...");
+    window.$videoOverlay.fadeIn(function () {
+      createReceiverPeerConnection(offerSDP, function (err, result) {
+        if (err) {
+          window.$videoOverlay.fadeOut(function () {
+            window.$videoOverlay.find('.call-msg').text("Calling...");
+          });
+          done(err);
+          return;
+        }
+        done(null, result);
+      });// end create Receiver PeerConnection()
+    });
+  } else {
+    console.log("ERROR: Incorrect usage. User callback missing.");
+  }
+}
+let popupCall = function(caller, done) {
+  if (caller && done && (typeof done == 'function')) {
+    let callerName = caller.name || 'Call',
+        callerPic = caller.photoURL || "static/img/default-avatar.png",
+        popupOverlay = document.createElement('div'),
+        callBox = `<div class="call-box margin-auto text-center">
+                      <div><span class="glyphicon glyphicon-phone-alt"></span> <span>${callerName}</span></div>
+                      <div>
+                        <img class="caller-pic" src="${callerPic}" alt="Caller pic">
+                      </div>
+                      <div class="call-controls"></div>
+                    </div>`;
+    popupOverlay.className = 'incoming-call-overlay display-flex';
+    popupOverlay.innerHTML = callBox;
+    popupOverlay.tabIndex = 1;
+
+    let callWaitTimeout = setTimeout(function () {
+      done('timeout');
+      // popupCall.done();
+    }, 10*1000);// wait for 10s for user action, then timeout
+    let btnReject = document.createElement('button');
+    btnReject.className = 'btn-reject btn btn-sm btn-danger';
+    btnReject.textContent = 'Reject';
+    btnReject.addEventListener('click', function() {
+      clearTimeout(callWaitTimeout);
+      done(false);
+      btnAccept.setAttribute('disabled', true);
+      // popupCall.done();
+    });
+    let btnAccept = document.createElement('button');
+    btnAccept.className = 'btn-accept btn btn-sm btn-success';
+    btnAccept.textContent = 'Accept';
+    btnAccept.addEventListener('click', function() {
+      clearTimeout(callWaitTimeout);
+      done(true);
+      btnAccept.setAttribute('disabled', true);
+      // popupCall.done();
+    });
+    popupOverlay.querySelector('.call-controls').appendChild(btnReject);
+    popupOverlay.querySelector('.call-controls').appendChild(btnAccept);
+    document.body.appendChild(popupOverlay);
+    setTimeout(function () {
+      popupCall.isActive = true;
+      popupOverlay.querySelector('.call-box').style.transform = 'scale(1)';
+      popupOverlay.style.opacity = 1;
+      btnAccept.focus();
+    }, 10);
+  } else {
+    console.log("ERROR: cannot show call.", caller, done);
+  }
+}
+popupCall.done = function () {
+  let popupOverlay = document.querySelector('.incoming-call-overlay');
+  if (popupOverlay) {
+    popupCall.isActive = false;
+    popupOverlay.querySelector('.btn-accept').setAttribute('disabled', true);
+    popupOverlay.querySelector('.btn-reject').setAttribute('disabled', true);
+    popupOverlay.querySelector('.call-box').style.transform = 'scale(.2)';
+    popupOverlay.style.opacity = 0;
+    setTimeout(function () {
+      document.body.removeChild(popupOverlay);
+    }, 300);//more than transform-scale time
+  }
+}
 let endCallHandler = function (iRejected) {
   if (window.localStream) {
     if (window.localStream.stop)
       window.localStream.stop();
     window.localStream.getTracks().forEach(function (track) { track.stop(); });
     window.localStream = null;
+  }
+  if (window.receiverPeer) {
+    window.receiverPeer.close();
+    window.receiverPeer = null;
   }
   if (window.initiatorPeer) {
     window.initiatorPeer.close();
@@ -270,7 +393,11 @@ let endCallHandler = function (iRejected) {
     }
     console.log("End call success", result);
   });
-  window.$videoOverlay.fadeOut(function () {
-    window.$videoOverlay.find('.call-msg').text("Calling...");
-  });
+  if (popupCall.isActive) {
+    popupCall.done();
+  } else {
+    window.$videoOverlay.fadeOut(function () {
+      window.$videoOverlay.find('.call-msg').text("Calling...");
+    });
+  }
 }

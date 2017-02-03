@@ -112,6 +112,8 @@ popupCall.done = function () {
   let popupOverlay = document.querySelector('.incoming-call-overlay');
   if (popupOverlay) {
     popupCall.isActive = false;
+    btnAccept.setAttribute('disabled', true);
+    btnReject.setAttribute('disabled', true);
     popupOverlay.querySelector('.call-box').style.transform = 'scale(.2)';
     popupOverlay.style.opacity = 0;
     setTimeout(function () {
@@ -120,7 +122,7 @@ popupCall.done = function () {
   }
 }
 
-let intitiateCall = function (caller, offerSDP, done) {
+let receiveCall = function (caller, offerSDP, done) {
   if (done && typeof done == 'function') {
     window.$videoOverlay.find('.call-msg').text("Call from " + caller.userId + "...");
     window.$videoOverlay.fadeIn(function () {

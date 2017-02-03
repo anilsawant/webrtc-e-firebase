@@ -8,17 +8,10 @@ let initializeFirebase = function (reinitialize) {
   };
   let app = window.app = firebase.initializeApp(config);
   let fdb = window.fdb = firebase.database();
-  window.receiversReference = window.fdb.ref("app/contacts/receivers");
-  window.initiatorsReference = window.fdb.ref("app/contacts/initiators");
-  window.exchangeReference = window.fdb.ref("app/exchange");
-  window.currentCall = {
-    "callTo": '',
-    "callFrom": '',
-    "timeout": '',
-    "initiator": false
-  }
+  window.userReference = window.fdb.ref("app2/contacts");
+  window.exchangeReference = window.fdb.ref("app2/exchange");
   window.myFirebaseObj = {
-    "userRef": window.receiversReference,
+    "userRef": window.userReference,
     "exchangeRef": window.exchangeReference
   }
   window.myFirebaseObj.logout = function (done) {
@@ -136,6 +129,126 @@ let initializeFirebase = function (reinitialize) {
       console.log("ERROR: Incorrect usage. User callback argument missing.");
     }
   };
+  window.myFirebaseObj.offerCall = function (props, done) {
+    if (done && typeof done == 'function') {
+      if (props && props.from && props.to && props.offerSDP) {
+        if (props.from == props.to) {
+          done({"message":"Cannot call yourself.","code":"ERROR"});
+        } else {
+          window.currentCall = {
+            "from": props.from,
+            "to": props.to,
+            "offerSDP": props.offerSDP,
+            "state": "CONNECTING",
+            "offerTimeStamp": Date.now()
+          }
+          let self = this,
+              newCallRef = self.exchangeRef.push(window.currentCall),
+              callKey = newCallRef.key;
+          self.userRef.child(props.to).transaction(function(currentReceiversStats) {
+            if (currentReceiversStats) {
+              if (currentReceiversStats.status == 'online' && !currentReceiversStats.call) {
+                currentReceiversStats.call = callKey;
+                return currentReceiversStats;
+              }
+              return;
+            }
+            return currentReceiversStats;
+          }, function (err, committed, snap) {
+            if (err) {
+              console.error(err);
+              done({"message": "Transaction aborted.","code":"FIREBASE_ERROR"});
+              newCallRef.remove();
+            } else {
+              let updatedReceiversStats = snap ? snap.val() : null;
+              if (updatedReceiversStats) {
+                if (committed == true ) {
+                  props.callKey = callKey;
+                  done(null, props);// offer done. Start listening for call state change now
+                  window.myFirebaseObj.setCallTimeout(props, function (err, timedoutData) {
+                    if (err) {
+                      console.log("Call timeout error",err);
+                      if (err.code == "FIREBASE_ERROR") {
+                        window.currentCall = {};
+                        newCallRef.remove();
+                        self.userRef.child(callerId).child('call').remove();
+                      } else if (err.code == "TRANSACTION_ERROR") {//call is not in CONNECTING state
+                        done(err);
+                      } else if (err.code == "NOT_FOUND") {
+                        console.log("ERROR: callKey is",props.callKey );
+                      } else if (err.code == "CALL_IS_ACTIVE") {
+                        console.log("ERROR: CALL_IS_ACTIVE callKey is",props.callKey );
+                        done(err);
+                      }
+                      return;
+                    }
+                    done({"message": "Call timed out.","code":"TIMEDOUT"});
+                  });
+                } else if (committed == false) {
+                  done({"message": "Transaction failed.","code":"TRANSACTION_ERROR"});
+                  window.currentCall = {};
+                  newCallRef.remove();
+                }
+              } else {
+                done({"message": "Transaction failed.","code":"NOT_FOUND"});
+                window.currentCall = {};
+                newCallRef.remove();
+              }
+            }
+          }, false);
+        }
+      } else {
+        console.log("ERROR: Cannot make call. Call properties obj is", props);
+      }
+    } else {
+      console.log("ERROR: Incorrect usage. User callback argument missing.");
+    }
+  };
+  window.myFirebaseObj.setCallTimeout = function (props, done) {
+    if (done && typeof done == 'function') {
+      let self = this;
+      if (props && props.callKey && props.to) {
+        window.currentCall.timeout = setTimeout(function () {
+          window.currentCall.isTimedOut = true;
+          console.log('Ack wait timeout called:');
+          self.exchangeRef.child(props.callKey).transaction(function(currentCallProps) {
+            if (currentCallProps) {
+              if (currentCallProps.state == "CONNECTING") {
+                currentCallProps.state = "TIMEDOUT";
+                return currentCallProps;
+              }
+              return;
+            }
+            return currentCallProps;
+          }, function (err, committed, snap) {
+            if (err) {
+              console.error(err);
+              done({"message":"Firebase Error.", "code":"FIREBASE_ERROR"});
+            } else {
+              let updatedCallProps = snap ? snap.val() : null;
+              if (updatedCallProps) {
+                if (committed == true ) {
+                  done(null, true);
+                } else if (committed == false) {
+                  if (updatedCallProps.state == "ACTIVE") {
+                    done({"message":"Call was answered exactly at timeout or just before.", "code":"CALL_IS_ACTIVE"});
+                  } else {
+                    done({"message":"Call timeOut failed.", "code":"TRANSACTION_ERROR"});
+                  }
+                }
+              } else {
+                done({"message":"Call timeOut failed.", "code":"NOT_FOUND"});
+              }
+            }
+          }, false);
+        }, props.timeOut || 10*1000);//default timeout is 10s
+      } else {
+        console.log("ERROR: Call timeOut cannot be initiated for", props);
+      }
+    } else {
+      console.log("ERROR: Incorrect usage. User callback argument missing.");
+    }
+  };// ./setCallTimeout()
   window.myFirebaseObj.sendCallAck =  function (callKey, done) {
     if (callKey) {
       if (done && typeof done == 'function') {
@@ -179,24 +292,25 @@ let initializeFirebase = function (reinitialize) {
     } else {
       console.log("ERROR: callKey is", callKey);
     }
-  };
+  };// ./end send acknowledgement
   window.myFirebaseObj.clearCurrentCall = function () {
     if (window.currentCall.from == window.user.userId) {
-      window.receiversReference.child(window.currentCall.to).child('call').remove();
+      this.userRef.child(window.currentCall.to).child('call').remove();
     } else {
-      window.receiversReference.child(window.user.userId).child('call').remove();
+      this.userRef.child(window.user.userId).child('call').remove();
     }
     window.currentCall = {};
   }
   window.myFirebaseObj.endCall = function (iRejected, done) {
     if (done && typeof done == 'function') {
+      let self = this;
       if (window.currentCall && window.currentCall.timeout  && !window.currentCall.isTimedOut) {
         clearTimeout(window.currentCall.timeout);
       }
       let callKey = window.currentCall.callKey;
       if (callKey) {
         if (iRejected) {
-          window.myFirebaseObj.exchangeRef.child(callKey).transaction(function(currentCallProps) {
+          self.exchangeRef.child(callKey).transaction(function(currentCallProps) {
             if (currentCallProps) {
               if (currentCallProps.state == "CONNECTING") {
                 currentCallProps.state = "REJECTED";
@@ -245,19 +359,20 @@ let initializeFirebase = function (reinitialize) {
     }
   }// ./endCall2()
 };
-
 let addUserStatusListener = function (userReference, userId) {
-  if (userReference && userId) {
+  if (userReference) {
+    userReference.child(userId).off();
+    userReference.child(userId).child('status').off();
     userReference.child(userId).child('status').on('value', function (snap) {
       let status = snap.val();
       if (status) {
         console.log("User is", status);
         switch (status) {
           case "online":
-          window.$loginOverlay.slideUp();
+            window.$loginOverlay.slideUp();
             break;
           case "offline":
-          window.$loginOverlay.slideDown();
+            window.$loginOverlay.slideDown();
             break;
           case "busy":
             break;
@@ -265,7 +380,7 @@ let addUserStatusListener = function (userReference, userId) {
       }
     });
   } else {
-    console.log("FATAL: User's firebase references is", userReference);
+    console.log("FATAL: Users firebase references is", userReference);
   }
 };// end addUserStatusListener()
 let removeAllUserListeners = function (userReference, userId) {
@@ -317,8 +432,8 @@ let addIncomingCallListeners = function (userReference, userId) {
                       break;
                     case "REJECTED":
                       newCallRef.once('value', function (snap) {
-                        let finishedCallStats = snap.val();
-                        if (finishedCallStats && finishedCallStats.by != window.user.userId) {
+                        let rejectedCallStats = snap.val();
+                        if (rejectedCallStats && rejectedCallStats.by != window.user.userId) {
                           endCallHandler(false);
                         }
                       });
@@ -329,7 +444,7 @@ let addIncomingCallListeners = function (userReference, userId) {
               });
 
               //get caller details
-              window.initiatorsReference.child(callStats.from).once('value', function (snap) {
+              userReference.child(callStats.from).once('value', function (snap) {
                 let caller = snap.val();
                 if (caller) {
                   popupCall(caller, function (accepted) {

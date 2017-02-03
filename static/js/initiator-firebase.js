@@ -134,7 +134,7 @@ let initializeFirebase = function (reinitialize) {
     if (done && typeof done == 'function') {
       if (props && props.from && props.to && props.offerSDP) {
         if (props.from == props.to) {
-          alert("Can't call yourself!")
+          done({"message":"Cannot call yourself.","code":"ERROR"});
         } else {
           window.currentCall = {
             "from": props.from,
