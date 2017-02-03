@@ -48,8 +48,8 @@ let setupHome = function () {
 }
 let setupVideoCall = function () {
   let videoOverlay = document.querySelector('.video-overlay'),
-      localVideo = window.localVideo = videoOverlay.querySelector('#localVideo'),
-      remoteVideo = window.remoteVideo = videoOverlay.querySelector('#remoteVideo'),
+      localVideo = window.localVideoElm = videoOverlay.querySelector('#localVideo'),
+      remoteVideo = window.remoteVideoElm = videoOverlay.querySelector('#remoteVideo'),
       btnEndCall = window.btnEndCall = videoOverlay.querySelector('.glyphicon-remove-sign');
 
   window.$videoOverlay = $(videoOverlay);
@@ -75,7 +75,7 @@ let popupCall = function(caller, done) {
 
     let callWaitTimeout = setTimeout(function () {
       done('timeout');
-      popupCall.done();
+      // popupCall.done();
     }, 10*1000);// wait for 10s for user action, then timeout
     let btnReject = document.createElement('button');
     btnReject.className = 'btn-reject btn btn-sm btn-danger';
@@ -120,21 +120,20 @@ popupCall.done = function () {
   }
 }
 
-let intitiateCall = function (caller, done) {
+let intitiateCall = function (caller, offerSDP, done) {
   if (done && typeof done == 'function') {
-    window.$videoOverlay.find('.call-to').text("Call from " + caller.userId + "...");
+    window.$videoOverlay.find('.call-msg').text("Call from " + caller.userId + "...");
     window.$videoOverlay.fadeIn(function () {
-      getWebcamAccess(window.localVideo, function (accessReceived) {
-        if (!accessReceived) {
-          console.log("ERROR: Did not get Webcam access.");
+      createReceiverPeerConnection(offerSDP, function (err, result) {
+        if (err) {
           window.$videoOverlay.fadeOut(function () {
-            window.$videoOverlay.find('.call-to').text("Calling...");
+            window.$videoOverlay.find('.call-msg').text("Calling...");
           });
-          done(false);
-        } else {
-          done(true);
+          done(err);
+          return;
         }
-      });
+        done(null, result);
+      });// end create Receiver PeerConnection()
     });
   } else {
     console.log("ERROR: Incorrect usage. User callback missing.");
@@ -147,6 +146,10 @@ let endCallHandler = function (iRejected) {
     window.localStream.getTracks().forEach(function (track) { track.stop(); });
     window.localStream = null;
   }
+  if (window.receiverPeer) {
+    window.receiverPeer.close();
+    window.receiverPeer = null;
+  }
   window.myFirebaseObj.endCall(iRejected, function (err, result) {
     if (err) {
       console.log("End call", err);
@@ -158,7 +161,7 @@ let endCallHandler = function (iRejected) {
     popupCall.done();
   } else {
     window.$videoOverlay.fadeOut(function () {
-      window.$videoOverlay.find('.call-to').text("Calling...");
+      window.$videoOverlay.find('.call-msg').text("Calling...");
     });
   }
 }

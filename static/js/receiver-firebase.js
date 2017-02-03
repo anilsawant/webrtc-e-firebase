@@ -163,7 +163,7 @@ let initializeFirebase = function (reinitialize) {
                 if (committed == true ) {
                   done(null, true);
                 } else if (committed == false) {
-                  done({"message":"Acknowledgement failed.", "code":"NOT_MY_TURN"});
+                  done({"message":"Acknowledgement failed.", "code":"INVALID_CALL_STATE"});
                 }
               } else {
                 done({"message":"Acknowledgement failed.", "code":"INVALID_KEY"});
@@ -201,10 +201,16 @@ let initializeFirebase = function (reinitialize) {
               if (currentCallProps.state == "CONNECTING") {
                 currentCallProps.state = "REJECTED";
                 currentCallProps.by = window.user.userId;
+                currentCallProps.offerSDP = null;
+                currentCallProps.answerSDP = null;
+                currentCallProps.answerCandidate = null;
                 return currentCallProps;
               } else if (currentCallProps.state == "ACTIVE") {
                 currentCallProps.state = "FINISHED";
                 currentCallProps.by = window.user.userId;
+                currentCallProps.offerSDP = null;
+                currentCallProps.answerSDP = null;
+                currentCallProps.answerCandidate = null;
                 currentCallProps.endTimeStamp = Date.now();
                 return currentCallProps;
               }
@@ -259,7 +265,7 @@ let addUserStatusListener = function (userReference, userId) {
       }
     });
   } else {
-    console.log("FATAL: Users firebase references is", userReference);
+    console.log("FATAL: User's firebase references is", userReference);
   }
 };// end addUserStatusListener()
 let removeAllUserListeners = function (userReference, userId) {
@@ -276,21 +282,17 @@ let addIncomingCallListeners = function (userReference, userId) {
       let newCallKey = snap.val();
       if (newCallKey) {
         console.log("Received: callKey=", newCallKey);
-        window.currentCall = {
-          "to": userId,
-          "from": null,
-          "callKey": newCallKey
-        }
         let newCallRef = window.exchangeReference.child(newCallKey);
         newCallRef.once('value', function (snap) {
           let callStats = snap.val();
           if (callStats) {
+            window.currentCall = callStats;
+            window.currentCall.callKey = newCallKey;
             if (callStats.state != "CONNECTING") {
               console.log("WARN: invalid call state", callStats.state);
               userReference.child(userId).child('call').remove();
               window.currentCall = {};
             } else {
-              window.currentCall.from = callStats.from;
               //on success start listening for the call state changes
               newCallRef.child('state').on('value', function (snap) {
                 let callState = snap.val();
@@ -300,7 +302,6 @@ let addIncomingCallListeners = function (userReference, userId) {
                     case "CONNECTING":
                       break;
                     case "ACTIVE":
-                      popupCall.done();//NOTE: remove this after call screen creation
 
                       break;
                     case "TIMEDOUT":
@@ -327,51 +328,47 @@ let addIncomingCallListeners = function (userReference, userId) {
                 }
               });
 
-              window.initiatorsReference.child(callStats.from).once('value', function (snap) {//to get caller details
+              //get caller details
+              window.initiatorsReference.child(callStats.from).once('value', function (snap) {
                 let caller = snap.val();
                 if (caller) {
                   popupCall(caller, function (accepted) {
                     if (accepted == true) {
-                      console.log("Call: Accepted");
-                      intitiateCall(caller, function (initiateResult) {
-                        if (initiateResult == true) {
-                          window.myFirebaseObj.sendCallAck(newCallKey, function (err, ackSent) {
+                      popupCall.done();
+                      window.myFirebaseObj.sendCallAck(newCallKey, function (err, ackSent) {
+                        if (err) {
+                          console.log("ERROR: send call ack", err);
+                          if (err.code == "INVALID_KEY") {
+                            userReference.child(userId).child('call').remove();
+                          } else if (err.code == "INVALID_CALL_STATE") {
+                            userReference.child(userId).child('call').remove();
+                          }
+                          return;
+                        }
+                        if (ackSent == true) {
+                          let offerSDP = JSON.parse(callStats.offerSDP);
+                          intitiateCall(caller, offerSDP, function (err, initiateResult) {
                             if (err) {
-                              console.log("ERROR: send call ack", err);
-                              if (err.code == "INVALID_KEY") {
-                                userReference.child(userId).child('call').remove();
-                              } else if (err.code == "NOT_MY_TURN") {
-                                userReference.child(userId).child('call').remove();
+                              console.log("ERROR: intitiate Call", err);
+                              if (err.name == "PermissionDeniedError") {
+                                endCallHandler(true);
+                              } else {
+                                endCallHandler(false);
                               }
                               return;
                             }
-                            if (ackSent == true) {
-                              // on success start listening for remote sdp
-                              newCallRef.child('fromSDP').on('value', function (snap) {
-                                let fromSDP = snap.val();
-                                if (fromSDP) {
-                                  console.log("Received:fromSDP=", fromSDP);
-                                  let toSDP = "This is a toSDP of " + userId;
-                                  newCallRef.child("toSDP").set(toSDP);
-                                }
-                              });
-                              //on success start listening for toSDP
-                              newCallRef.child('fromCandidate').on('value', function (snap) {
-                                let toCandidate = snap.val();
-                                if (toCandidate) {
-                                  console.log("Received:toCandidate=", toCandidate);
-                                }
-                              });
+                            if (initiateResult == true) {
+                              console.log("SUCCESS: Call initiated");
+                            } else {
+                              endCallHandler(false);
                             }
                           });
-                        } else if (initiateResult == false) {
-                          endCallHandler(true);
                         }
-                      });
-                    } else if (accepted == false) {
-                      console.log("Call: Rejected");
+                      });// ./end send acknowledgement
+                    } else if (accepted == false) {//rejected by user
                       endCallHandler(true);
                     } else if (accepted == 'timeout') {
+                      popupCall.done();
                       window.myFirebaseObj.clearCurrentCall();
                     }
                   });

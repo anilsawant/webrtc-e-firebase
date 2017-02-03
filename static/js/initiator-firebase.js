@@ -130,17 +130,18 @@ let initializeFirebase = function (reinitialize) {
       console.log("ERROR: Incorrect usage. User callback argument missing.");
     }
   };
-  window.myFirebaseObj.makeCall = function (props, done) {
+  window.myFirebaseObj.offerCall = function (props, done) {
     if (done && typeof done == 'function') {
-      if (props && props.from && props.to) {
+      if (props && props.from && props.to && props.offerSDP) {
         if (props.from == props.to) {
           alert("Can't call yourself!")
         } else {
           window.currentCall = {
             "from": props.from,
             "to": props.to,
+            "offerSDP": props.offerSDP,
             "state": "CONNECTING",
-            "requestTimeStamp": Date.now()
+            "offerTimeStamp": Date.now()
           }
           let self = this;
           let newCallRef = self.exchangeRef.push(window.currentCall);
@@ -164,7 +165,7 @@ let initializeFirebase = function (reinitialize) {
               if (updatedReceiversStats) {
                 if (committed == true ) {
                   props.callKey = callKey;
-                  done(null, props);
+                  done(null, props);// offer done. Start listening for call state change now
                   window.myFirebaseObj.setCallTimeout(props, function (err, timedoutData) {
                     if (err) {
                       console.log("Call timeout error",err);
@@ -177,7 +178,7 @@ let initializeFirebase = function (reinitialize) {
                       } else if (err.code == "NOT_FOUND") {
                         console.log("ERROR: callKey is",props.callKey );
                       } else if (err.code == "CALL_IS_ACTIVE") {
-                        console.log("ERROR: callKey is",props.callKey );
+                        console.log("ERROR: CALL_IS_ACTIVE callKey is",props.callKey );
                         done(err);
                       }
                       return;
@@ -269,10 +270,16 @@ let initializeFirebase = function (reinitialize) {
               if (currentCallProps.state == "CONNECTING") {
                 currentCallProps.state = "REJECTED";
                 currentCallProps.by = window.user.userId;
+                currentCallProps.offerSDP = null;
+                currentCallProps.answerSDP = null;
+                currentCallProps.answerCandidate = null;
                 return currentCallProps;
               } else if (currentCallProps.state == "ACTIVE") {
                 currentCallProps.state = "FINISHED";
                 currentCallProps.by = window.user.userId;
+                currentCallProps.offerSDP = null;
+                currentCallProps.answerSDP = null;
+                currentCallProps.answerCandidate = null;
                 currentCallProps.endTimeStamp = Date.now();
                 return currentCallProps;
               }

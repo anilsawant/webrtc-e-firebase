@@ -97,112 +97,121 @@ let setupContactsBook = function () {
       let callerId = evt.target.getAttribute('data-callerid');
       if (callerId) {
         if (window.$videoOverlay) {
-          window.$videoOverlay.find('.call-to').text("Calling " + callerId + "...");
+          window.$videoOverlay.find('.call-msg').text("Calling " + callerId + "...");
           window.$videoOverlay.fadeIn(function () {
             hideLeftSlider();
-            getWebcamAccess(window.localVideo, function (accessReceived) {
-              if (!accessReceived) {
+            getWebcamAccess(window.localVideo, function (err, localStream) {
+              if (err) {
                 console.log("ERROR: Did not get Webcam access.");
                 window.$videoOverlay.fadeOut(function () {
-                  window.$videoOverlay.find('.call-to').text("Calling...");
+                  window.$videoOverlay.find('.call-msg').text("Calling...");
                 });
-              } else {
-                let callProps = {
-                  "from": window.user.userId,
-                  "to": callerId,
-                  "timeOut": 20*1000 // timeOut call after this time
+                return;
+              }
+              createRTCPeerConnectionAndOffer(localStream, function (err, rtcOfferSDP) {
+                if (err) {
+                  console.log("ERROR in creating local peer connection.", err);
+                  return;
                 }
-                window.myFirebaseObj.makeCall(callProps, function (err, callData) {
-                  if (err) {
-                    console.log("Make call error",err);
-                    if (err.code == "NOT_FOUND") {
-                      console.log("Receiver " + callerId + " was not found.");
-                      endCallHandler(false);
-                    } else if (err.code == "TRANSACTION_ERROR") {
-                      console.log("Receiver " + callerId + " is not online or is already on a call.");
-                      // endCallHandler(false);
-                      console.log("Alert the user about this.");
-                    } else if (err.code == "TIMEDOUT") {
-                      endCallHandler(false);
-                    } else if (err.code == "CALL_IS_ACTIVE") {
-                      if (window.currentCall.state == "ACTIVE") {
-                        let fromSDP = "This is a FromSDP of " + window.user.userId;
-                        window.myFirebaseObj.exchangeRef(callData.callKey).child("fromSDP").set(fromSDP);
-                      } else {
-                        console.log("FATAL: Call failed.", window.currentCall);
-                      }
-                    }
-                    return;
+                if (rtcOfferSDP) {
+                  let callProps = {
+                    "from": window.user.userId,
+                    "offerSDP": JSON.stringify(rtcOfferSDP),
+                    "to": callerId,
+                    "timeOut": 20*1000 // timeOut call after this time
                   }
-
-                  if (callData && callData.callKey) {
-                    window.currentCall.callKey = callData.callKey;
-                    let newCallRef = window.myFirebaseObj.exchangeRef.child(callData.callKey);
-                    //on success start listening for the call state changes
-                    newCallRef.child('state').on('value', function (snap) {
-                      let callState = snap.val();
-                      if (callState) {
-                        console.log("Call state is", callState);
-                        window.currentCall.state = callState;
-                        switch (callState) {
-                          case "CONNECTING":
-                            break;
-                          case "ACTIVE":
-                            if (!window.currentCall.isTimedOut) {
-                              clearTimeout(window.currentCall.timeout);//clear ack wait timeout
-                              let fromSDP = "This is a FromSDP of " + window.user.userId;
-                              newCallRef.child("fromSDP").set(fromSDP);
-                            }
-                            break;
-                          case "TIMEDOUT":
-
-                            break;
-                          case "FINISHED":
-                            newCallRef.once('value', function (snap) {
-                              let finishedCallStats = snap.val();
-                              if (finishedCallStats && finishedCallStats.by != window.user.userId) {
-                                endCallHandler(false);
-                              }
-                            });
-                            break;
-                          case "REJECTED":
-                            newCallRef.once('value', function (snap) {
-                              let finishedCallStats = snap.val();
-                              if (finishedCallStats && finishedCallStats.by != window.user.userId) {
-                                endCallHandler(false);
-                              }
-                            });
-                            break;
+                  window.myFirebaseObj.offerCall(callProps, function (err, callData) {
+                    if (err) {
+                      console.log("Make call error",err);
+                      if (err.code == "NOT_FOUND") {
+                        console.log("Receiver " + callerId + " was not found.");
+                        endCallHandler(false);
+                      } else if (err.code == "TRANSACTION_ERROR") {
+                        console.log("Receiver " + callerId + " is not online or is already on a call.");
+                        // endCallHandler(false);
+                        console.log("Alert the user about this. Write endCallHandler2");
+                      } else if (err.code == "TIMEDOUT") {
+                        endCallHandler(false);
+                      } else if (err.code == "CALL_IS_ACTIVE") {
+                        if (window.currentCall.state == "ACTIVE") {
+                          // window.myFirebaseObj.exchangeRef(callData.callKey).child("fromSDP").set(rtcOfferSDP);
+                        } else {
+                          console.log("FATAL: Call failed.", window.currentCall);
                         }
                       }
-                    });
-                    //on success start listening for toSDP
-                    newCallRef.child('toSDP').on('value', function (snap) {
-                      let toSDP = snap.val();
-                      if (toSDP) {
-                        console.log("Received:toSDP=", toSDP);
-                      }
-                    });
-                    //on success start listening for toCandidate
-                    newCallRef.child('toCandidate').on('value', function (snap) {
-                      let toCandidate = snap.val();
-                      if (toCandidate) {
-                        console.log("Received:toCandidate=", toCandidate);
-                      }
-                    });
-                  } else {
-                    console.log("ERROR: callData is", callData);
-                  }
-                });
-              }
-            });
+                      return;
+                    }
+
+                    if (callData && callData.callKey) {
+                      window.currentCall.callKey = callData.callKey;
+                      let newCallRef = window.myFirebaseObj.exchangeRef.child(callData.callKey);
+                      //on success start listening for the call state changes
+                      newCallRef.child('state').on('value', function (snap) {
+                        let callState = snap.val();
+                        if (callState) {
+                          console.log("Call state is", callState);
+                          window.currentCall.state = callState;
+                          switch (callState) {
+                            case "CONNECTING":
+                              break;
+                            case "ACTIVE":
+                              if (!window.currentCall.isTimedOut) {
+                                clearTimeout(window.currentCall.timeout);//clear ack wait timeout
+                              }
+                              break;
+                            case "TIMEDOUT":
+
+                              break;
+                            case "FINISHED":
+                              newCallRef.once('value', function (snap) {
+                                let finishedCallStats = snap.val();
+                                if (finishedCallStats && finishedCallStats.by != window.user.userId) {
+                                  endCallHandler(false);
+                                }
+                              });
+                              break;
+                            case "REJECTED":
+                              newCallRef.once('value', function (snap) {
+                                let finishedCallStats = snap.val();
+                                if (finishedCallStats && finishedCallStats.by != window.user.userId) {
+                                  endCallHandler(false);
+                                }
+                              });
+                              break;
+                          }
+                        }
+                      });// ./end callRef child('state').on()
+                      //on success start listening for answerSDP
+                      newCallRef.child('answerSDP').on('value', function (snap) {
+                        let answerSDP = snap.val();
+                        if (answerSDP) {
+                          window.initiatorPeer.setRemoteDescription(JSON.parse(answerSDP));
+                        }
+                      });
+                      //on success start listening for answerCandidate
+                      newCallRef.child('answerCandidate').on('value', function (snap) {
+                        let answerCandidate = snap.val();
+                        if (answerCandidate) {
+                          console.log("Received:answerCandidate");
+                          window.initiatorPeer.addIceCandidate(new RTCIceCandidate(JSON.parse(answerCandidate)));
+                        }
+                      });
+                    } else {
+                      console.log("ERROR: callData is", callData);
+                    }
+                  });// ./end  make Call()
+                } else {
+                  console.log("ERROR: rtcOfferSDP is", rtcOfferSDP);
+                }
+              });// ./end create RTCPeerConnection And CreateOffer()
+            });// ./end get Webcam Access()
           });
         }
       } else {
         console.log("Can't call to ", callTo);
       }
     }
-  })
+  }); // ./end search ContactsList click()
 }
 let toggleLeftSlider = function () {
   let leftSlider = document.querySelector('.left-slider');
@@ -220,7 +229,7 @@ let hideLeftSlider = function () {
 let setupVideoCall = function () {
   let videoOverlay = document.querySelector('.video-overlay'),
       localVideo = window.localVideo = videoOverlay.querySelector('#localVideo'),
-      remoteVideo = window.remoteVideo = videoOverlay.querySelector('#remoteVideo'),
+      remoteVideo = window.remoteVideoElm = videoOverlay.querySelector('#remoteVideo'),
       btnEndCall = window.btnEndCall = videoOverlay.querySelector('.glyphicon-remove-sign');
 
   window.$videoOverlay = $(videoOverlay);
@@ -235,6 +244,10 @@ let endCallHandler = function (iRejected) {
     window.localStream.getTracks().forEach(function (track) { track.stop(); });
     window.localStream = null;
   }
+  if (window.initiatorPeer) {
+    window.initiatorPeer.close();
+    window.initiatorPeer = null;
+  }
   window.myFirebaseObj.endCall(iRejected, function (err, result) {
     if (err) {
       console.log("End call", err);
@@ -243,6 +256,6 @@ let endCallHandler = function (iRejected) {
     console.log("End call success", result);
   });
   window.$videoOverlay.fadeOut(function () {
-    window.$videoOverlay.find('.call-to').text("Calling...");
+    window.$videoOverlay.find('.call-msg').text("Calling...");
   });
 }
