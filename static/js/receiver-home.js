@@ -83,7 +83,8 @@ let popupCall = function(caller, done) {
     btnReject.addEventListener('click', function() {
       clearTimeout(callWaitTimeout);
       done(false);
-      popupCall.done();
+      btnAccept.setAttribute('disabled', true);
+      // popupCall.done();
     });
     let btnAccept = document.createElement('button');
     btnAccept.className = 'btn-accept btn btn-sm btn-success';
@@ -91,12 +92,14 @@ let popupCall = function(caller, done) {
     btnAccept.addEventListener('click', function() {
       clearTimeout(callWaitTimeout);
       done(true);
-      popupCall.done();
+      btnAccept.setAttribute('disabled', true);
+      // popupCall.done();
     });
     popupOverlay.querySelector('.call-controls').appendChild(btnReject);
     popupOverlay.querySelector('.call-controls').appendChild(btnAccept);
     document.body.appendChild(popupOverlay);
     setTimeout(function () {
+      popupCall.isActive = true;
       popupOverlay.querySelector('.call-box').style.transform = 'scale(1)';
       popupOverlay.style.opacity = 1;
       btnAccept.focus();
@@ -108,10 +111,11 @@ let popupCall = function(caller, done) {
 popupCall.done = function () {
   let popupOverlay = document.querySelector('.incoming-call-overlay');
   if (popupOverlay) {
+    popupCall.isActive = false;
     popupOverlay.querySelector('.call-box').style.transform = 'scale(.2)';
     popupOverlay.style.opacity = 0;
     setTimeout(function () {
-        document.body.removeChild(popupOverlay);
+      document.body.removeChild(popupOverlay);
     }, 300);//more than transform-scale time
   }
 }
@@ -133,18 +137,28 @@ let intitiateCall = function (caller, done) {
       });
     });
   } else {
-    console.log("ERROR: incorrect usage. User callback missing.");
+    console.log("ERROR: Incorrect usage. User callback missing.");
   }
 }
-let endCallHandler = function (sendEndCallMsg) {
+let endCallHandler = function (iRejected) {
   if (window.localStream) {
     if (window.localStream.stop)
       window.localStream.stop();
     window.localStream.getTracks().forEach(function (track) { track.stop(); });
     window.localStream = null;
   }
-  window.myFirebaseObj.endCall(sendEndCallMsg);
-  window.$videoOverlay.fadeOut(function () {
-    window.$videoOverlay.find('.call-to').text("Calling...");
+  window.myFirebaseObj.endCall(iRejected, function (err, result) {
+    if (err) {
+      console.log("End call", err);
+      return;
+    }
+    console.log("End call success", result);
   });
+  if (popupCall.isActive) {
+    popupCall.done();
+  } else {
+    window.$videoOverlay.fadeOut(function () {
+      window.$videoOverlay.find('.call-to').text("Calling...");
+    });
+  }
 }

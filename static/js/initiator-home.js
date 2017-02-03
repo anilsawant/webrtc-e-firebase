@@ -110,9 +110,8 @@ let setupContactsBook = function () {
                 let callProps = {
                   "from": window.user.userId,
                   "to": callerId,
-                  "timeOut": 20*1000
+                  "timeOut": 20*1000 // timeOut call after this time
                 }
-                window.currentCall.isInitiator = true;
                 window.myFirebaseObj.makeCall(callProps, function (err, callData) {
                   if (err) {
                     console.log("Make call error",err);
@@ -121,11 +120,12 @@ let setupContactsBook = function () {
                       endCallHandler(false);
                     } else if (err.code == "TRANSACTION_ERROR") {
                       console.log("Receiver " + callerId + " is not online or is already on a call.");
-                      endCallHandler(false);
+                      // endCallHandler(false);
+                      console.log("Alert the user about this.");
                     } else if (err.code == "TIMEDOUT") {
-                      endCallHandler(true);
+                      endCallHandler(false);
                     } else if (err.code == "CALL_IS_ACTIVE") {
-                      if (window.currentCall.ackFrom) {
+                      if (window.currentCall.state == "ACTIVE") {
                         let fromSDP = "This is a FromSDP of " + window.user.userId;
                         window.myFirebaseObj.exchangeRef(callData.callKey).child("fromSDP").set(fromSDP);
                       } else {
@@ -138,17 +138,16 @@ let setupContactsBook = function () {
                   if (callData && callData.callKey) {
                     window.currentCall.callKey = callData.callKey;
                     let newCallRef = window.myFirebaseObj.exchangeRef.child(callData.callKey);
-                    //on success start listening for the acknowledgement
+                    //on success start listening for the call state changes
                     newCallRef.child('state').on('value', function (snap) {
                       let callState = snap.val();
                       if (callState) {
                         console.log("Call state is", callState);
+                        window.currentCall.state = callState;
                         switch (callState) {
                           case "CONNECTING":
                             break;
                           case "ACTIVE":
-                            console.log("Acknowledgement received from ", callData.to);
-                            window.currentCall.ackFrom = callData.to;
                             if (!window.currentCall.isTimedOut) {
                               clearTimeout(window.currentCall.timeout);//clear ack wait timeout
                               let fromSDP = "This is a FromSDP of " + window.user.userId;
@@ -159,23 +158,21 @@ let setupContactsBook = function () {
 
                             break;
                           case "FINISHED":
-
+                            newCallRef.once('value', function (snap) {
+                              let finishedCallStats = snap.val();
+                              if (finishedCallStats && finishedCallStats.by != window.user.userId) {
+                                endCallHandler(false);
+                              }
+                            });
                             break;
                           case "REJECTED":
-
+                            newCallRef.once('value', function (snap) {
+                              let finishedCallStats = snap.val();
+                              if (finishedCallStats && finishedCallStats.by != window.user.userId) {
+                                endCallHandler(false);
+                              }
+                            });
                             break;
-
-                        }
-                      }
-                      if (callState && callState == "ACTIVE") {//state = ACTIVE means acknowledged
-
-                      } else if (callState && callState == "REJECTED") {//state = REJECTED means user declined
-                        console.log("Acknowledgement received from ", callData.to);
-                        window.currentCall.ackFrom = callData.to;
-                        if (!window.currentCall.isTimedOut) {
-                          clearTimeout(window.currentCall.timeout);//clear ack wait timeout
-                          let fromSDP = "This is a FromSDP of " + window.user.userId;
-                          newCallRef.child("fromSDP").set(fromSDP);
                         }
                       }
                     });
@@ -191,14 +188,6 @@ let setupContactsBook = function () {
                       let toCandidate = snap.val();
                       if (toCandidate) {
                         console.log("Received:toCandidate=", toCandidate);
-                      }
-                    });
-                    //on success start listening for toEndCall
-                    newCallRef.child('toEndCall').on('value', function (snap) {
-                      let endCallMsg = snap.val();
-                      if (endCallMsg == true) {
-                        console.log("Received:toEndCall=", endCallMsg);
-                        endCallHandler(false);
                       }
                     });
                   } else {
@@ -239,14 +228,20 @@ let setupVideoCall = function () {
     endCallHandler(true);
   });
 }
-let endCallHandler = function (sendEndCallMsg) {
+let endCallHandler = function (iRejected) {
   if (window.localStream) {
     if (window.localStream.stop)
       window.localStream.stop();
     window.localStream.getTracks().forEach(function (track) { track.stop(); });
     window.localStream = null;
   }
-  window.myFirebaseObj.endCall(sendEndCallMsg);
+  window.myFirebaseObj.endCall(iRejected, function (err, result) {
+    if (err) {
+      console.log("End call", err);
+      return;
+    }
+    console.log("End call success", result);
+  });
   window.$videoOverlay.fadeOut(function () {
     window.$videoOverlay.find('.call-to').text("Calling...");
   });

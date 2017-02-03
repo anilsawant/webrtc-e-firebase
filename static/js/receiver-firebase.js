@@ -144,12 +144,7 @@ let initializeFirebase = function (reinitialize) {
         if (user && user.userId) {
           this.exchangeRef.child(callKey).transaction(function(currentCallProps) {
             if (currentCallProps) {
-              //acknowledgement succeeds only if it's "my turn to acknowledge" and "the acknowledgement has not been done before".
-              // if (currentCallProps.turn == user.userId && !currentCallProps.to && currentCallProps.state == 'CONNECTING') {
               if (currentCallProps.state == 'CONNECTING') {
-                currentCallProps.to = user.userId;
-                currentCallProps.turn = currentCallProps.from;
-                window.currentCall.callFrom = currentCallProps.from;
                 currentCallProps.startTimeStamp = Date.now();
                 currentCallProps.state = "ACTIVE";
                 return currentCallProps;
@@ -174,7 +169,7 @@ let initializeFirebase = function (reinitialize) {
                 done({"message":"Acknowledgement failed.", "code":"INVALID_KEY"});
               }
             }
-          });
+          }, false);
         } else {
           console.log("ERROR: Take break failed. User is", user);
         }
@@ -185,23 +180,64 @@ let initializeFirebase = function (reinitialize) {
       console.log("ERROR: callKey is", callKey);
     }
   };
-  window.myFirebaseObj.endCall = function (sendEndCallMsg) {
-    if (window.currentCall && window.currentCall.timeOut  && !window.currentCall.isTimedOut) {
-      clearTimeout(window.currentCall.timeOut);
+  window.myFirebaseObj.clearCurrentCall = function () {
+    if (window.currentCall.from == window.user.userId) {
+      window.receiversReference.child(window.currentCall.to).child('call').remove();
+    } else {
+      window.receiversReference.child(window.user.userId).child('call').remove();
     }
-    let callKey = window.currentCall.callKey;
-    if (callKey) {
-      if (sendEndCallMsg == true) {
-        window.exchangeReference.child(callKey).child('toEndCall').set(true).then(function () {
-          window.exchangeReference.child(callKey).remove();
-        });
-      } else if (window.currentCall.isInitiator == true) {
-        window.exchangeReference.child(callKey).remove();
-      }
-    }
-    window.receiversReference.child(window.user.userId).child('call').remove();
     window.currentCall = {};
-  }// ./endCall()
+  }
+  window.myFirebaseObj.endCall = function (iRejected, done) {
+    if (done && typeof done == 'function') {
+      if (window.currentCall && window.currentCall.timeout  && !window.currentCall.isTimedOut) {
+        clearTimeout(window.currentCall.timeout);
+      }
+      let callKey = window.currentCall.callKey;
+      if (callKey) {
+        if (iRejected) {
+          window.myFirebaseObj.exchangeRef.child(callKey).transaction(function(currentCallProps) {
+            if (currentCallProps) {
+              if (currentCallProps.state == "CONNECTING") {
+                currentCallProps.state = "REJECTED";
+                currentCallProps.by = window.user.userId;
+                return currentCallProps;
+              } else if (currentCallProps.state == "ACTIVE") {
+                currentCallProps.state = "FINISHED";
+                currentCallProps.by = window.user.userId;
+                currentCallProps.endTimeStamp = Date.now();
+                return currentCallProps;
+              }
+              return;
+            }
+            return currentCallProps;
+          }, function (err, committed, snap) {
+            if (err) {
+              console.error(err);
+              window.myFirebaseObj.clearCurrentCall();
+              done({"message":"Firebase Error.", "code":"FIREBASE_ERROR"});
+            } else {
+              let updatedCallProps = snap ? snap.val() : null;
+              if (updatedCallProps) {
+                window.myFirebaseObj.clearCurrentCall();
+                done(null, committed);
+              } else {
+                window.myFirebaseObj.clearCurrentCall();
+                done({"message":"Call end failed.", "code":"NOT_FOUND"});
+              }
+            }
+          }, false);
+        } else {
+          window.myFirebaseObj.clearCurrentCall();
+          done(null, true);
+        }
+      } else {
+        done({"message":"Call key not found.", "code":"NOT_FOUND"});
+      }
+    } else {
+      console.log("ERROR: Incorrect usage. User callback argument missing.");
+    }
+  }// ./endCall2()
 };
 
 let addUserStatusListener = function (userReference, userId) {
@@ -240,16 +276,57 @@ let addIncomingCallListeners = function (userReference, userId) {
       let newCallKey = snap.val();
       if (newCallKey) {
         console.log("Received: callKey=", newCallKey);
-        window.currentCall.callKey = newCallKey;
-        window.exchangeReference.child(newCallKey).once('value', function (snap) {
+        window.currentCall = {
+          "to": userId,
+          "from": null,
+          "callKey": newCallKey
+        }
+        let newCallRef = window.exchangeReference.child(newCallKey);
+        newCallRef.once('value', function (snap) {
           let callStats = snap.val();
           if (callStats) {
             if (callStats.state != "CONNECTING") {
-              console.log("WARN: call not in CONNECTING state", callStats);
+              console.log("WARN: invalid call state", callStats.state);
               userReference.child(userId).child('call').remove();
-              window.exchangeReference.child(newCallKey).remove();
               window.currentCall = {};
             } else {
+              window.currentCall.from = callStats.from;
+              //on success start listening for the call state changes
+              newCallRef.child('state').on('value', function (snap) {
+                let callState = snap.val();
+                if (callState) {
+                  console.log("Call state is", callState);
+                  switch (callState) {
+                    case "CONNECTING":
+                      break;
+                    case "ACTIVE":
+                      popupCall.done();//NOTE: remove this after call screen creation
+
+                      break;
+                    case "TIMEDOUT":
+
+                      break;
+                    case "FINISHED":
+                      newCallRef.once('value', function (snap) {
+                        let finishedCallStats = snap.val();
+                        if (finishedCallStats && finishedCallStats.by != window.user.userId) {
+                          endCallHandler(false);
+                        }
+                      });
+                      break;
+                    case "REJECTED":
+                      newCallRef.once('value', function (snap) {
+                        let finishedCallStats = snap.val();
+                        if (finishedCallStats && finishedCallStats.by != window.user.userId) {
+                          endCallHandler(false);
+                        }
+                      });
+                      break;
+
+                  }
+                }
+              });
+
               window.initiatorsReference.child(callStats.from).once('value', function (snap) {//to get caller details
                 let caller = snap.val();
                 if (caller) {
@@ -265,22 +342,21 @@ let addIncomingCallListeners = function (userReference, userId) {
                                 userReference.child(userId).child('call').remove();
                               } else if (err.code == "NOT_MY_TURN") {
                                 userReference.child(userId).child('call').remove();
-                                window.exchangeReference.child(newCallKey).remove();
                               }
                               return;
                             }
                             if (ackSent == true) {
                               // on success start listening for remote sdp
-                              window.exchangeReference.child(newCallKey).child('fromSDP').on('value', function (snap) {
+                              newCallRef.child('fromSDP').on('value', function (snap) {
                                 let fromSDP = snap.val();
                                 if (fromSDP) {
                                   console.log("Received:fromSDP=", fromSDP);
                                   let toSDP = "This is a toSDP of " + userId;
-                                  window.exchangeReference.child(newCallKey).child("toSDP").set(toSDP);
+                                  newCallRef.child("toSDP").set(toSDP);
                                 }
                               });
                               //on success start listening for toSDP
-                              window.exchangeReference.child(newCallKey).child('fromCandidate').on('value', function (snap) {
+                              newCallRef.child('fromCandidate').on('value', function (snap) {
                                 let toCandidate = snap.val();
                                 if (toCandidate) {
                                   console.log("Received:toCandidate=", toCandidate);
@@ -294,13 +370,13 @@ let addIncomingCallListeners = function (userReference, userId) {
                       });
                     } else if (accepted == false) {
                       console.log("Call: Rejected");
-                      window.myFirebaseObj.endCall(true);
+                      endCallHandler(true);
                     } else if (accepted == 'timeout') {
-                      window.myFirebaseObj.endCall(false);
+                      window.myFirebaseObj.clearCurrentCall();
                     }
                   });
                   //listen to end-call before hand
-                  window.exchangeReference.child(newCallKey).child('fromEndCall').on('value', function (snap) {
+                  newCallRef.child('fromEndCall').on('value', function (snap) {
                     let endCallMsg = snap.val();
                     if (endCallMsg == true) {
                       console.log("Received:fromEndCall=", endCallMsg);

@@ -32,7 +32,7 @@ let setupLogin = function () {
           matchMsg = "Receiver's id should start with 1 and contain 4 digits.";
         }
         if (userIdRegEx.test(userId)) {
-          if (password == 'wipro123') {
+          if (password == 'as') {
             userReference.child(userId).once('value', function (snapshot) {
               let user = snapshot.val();
               if (user) {
