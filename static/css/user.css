@@ -115,6 +115,7 @@ ul.contacts li .glyphicon-earphone {
 }
 /******* Video styling *********/
 .video-overlay,
+.signup-overlay,
 .login-overlay {
   background-color: rgba(10,10,10,.7);
   height: 100%;
@@ -129,6 +130,9 @@ ul.contacts li .glyphicon-earphone {
 }
 .login-overlay {
   z-index: 1101;
+}
+.signup-overlay {
+  z-index: 1102;
 }
 .incoming-call-overlay {
   z-index: 1103;

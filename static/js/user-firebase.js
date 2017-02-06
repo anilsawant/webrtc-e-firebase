@@ -8,18 +8,20 @@ let initializeFirebase = function (reinitialize) {
   };
   let app = window.app = firebase.initializeApp(config);
   let fdb = window.fdb = firebase.database();
-  window.userReference = window.fdb.ref("app2/contacts");
+  window.usersRef = window.fdb.ref("app2/users");
+  window.phoneDirRef = window.fdb.ref("app2/phoneDirectory");
   window.exchangeReference = window.fdb.ref("app2/exchange");
   window.myFirebaseObj = {
-    "userRef": window.userReference,
-    "exchangeRef": window.exchangeReference
+    "phoneDirRef": window.phoneDirRef,
+    "exchangeRef": window.exchangeReference,
+    "usersRef": window.usersRef
   }
   window.myFirebaseObj.logout = function (done) {
     if (done && typeof done == 'function') {
       let self = this,
           user = window.user;
       if (user && user.userId) {
-        this.userRef.child(user.userId).transaction(function(currentUserStats) {
+        this.usersRef.child(user.userId).transaction(function(currentUserStats) {
           if (currentUserStats) {
             if (currentUserStats.status == 'online') {
               currentUserStats.status = "offline";
@@ -36,7 +38,7 @@ let initializeFirebase = function (reinitialize) {
             let updatedUserStats = snap ? snap.val() : null;
             if (updatedUserStats) {
               if (committed == true ) {
-                removeAllUserListeners(self.userRef, user.userId);
+                removeAllUserListeners(self.usersRef, user.userId);
                 done(null, true);
               } else if (committed == false) {
                 done({"message":"Transaction failed.", "code":"TRANSACTION_ERROR"});
@@ -58,7 +60,7 @@ let initializeFirebase = function (reinitialize) {
       let self = this,
           user = window.user;
       if (user && user.userId) {
-        this.userRef.child(user.userId).transaction(function(currentUserStats) {
+        this.usersRef.child(user.userId).transaction(function(currentUserStats) {
           if (currentUserStats) {
             if (currentUserStats.status == 'online') {
               currentUserStats.status = "busy";
@@ -96,7 +98,7 @@ let initializeFirebase = function (reinitialize) {
       let self = this,
           user = window.user;
       if (user && user.userId) {
-        this.userRef.child(user.userId).transaction(function(currentUserStats) {
+        this.usersRef.child(user.userId).transaction(function(currentUserStats) {
           if (currentUserStats) {
             if (currentUserStats.status == 'busy') {
               currentUserStats.status = "online";
@@ -145,7 +147,7 @@ let initializeFirebase = function (reinitialize) {
           let self = this,
               newCallRef = self.exchangeRef.push(window.currentCall),
               callKey = newCallRef.key;
-          self.userRef.child(props.to).transaction(function(currentReceiversStats) {
+          self.usersRef.child(props.to).transaction(function(currentReceiversStats) {
             if (currentReceiversStats) {
               if (currentReceiversStats.status == 'online' && !currentReceiversStats.call) {
                 currentReceiversStats.call = callKey;
@@ -171,7 +173,7 @@ let initializeFirebase = function (reinitialize) {
                       if (err.code == "FIREBASE_ERROR") {
                         window.currentCall = {};
                         newCallRef.remove();
-                        self.userRef.child(callerId).child('call').remove();
+                        self.usersRef.child(callerId).child('call').remove();
                       } else if (err.code == "TRANSACTION_ERROR") {//call is not in CONNECTING state
                         done(err);
                       } else if (err.code == "NOT_FOUND") {
@@ -295,9 +297,9 @@ let initializeFirebase = function (reinitialize) {
   };// ./end send acknowledgement
   window.myFirebaseObj.clearCurrentCall = function () {
     if (window.currentCall.from == window.user.userId) {
-      this.userRef.child(window.currentCall.to).child('call').remove();
+      this.usersRef.child(window.currentCall.to).child('call').remove();
     } else {
-      this.userRef.child(window.user.userId).child('call').remove();
+      this.usersRef.child(window.user.userId).child('call').remove();
     }
     window.currentCall = {};
   }
@@ -359,11 +361,11 @@ let initializeFirebase = function (reinitialize) {
     }
   }// ./endCall2()
 };
-let addUserStatusListener = function (userReference, userId) {
-  if (userReference) {
-    userReference.child(userId).off();
-    userReference.child(userId).child('status').off();
-    userReference.child(userId).child('status').on('value', function (snap) {
+let addUserStatusListener = function (usersRef, userId) {
+  if (usersRef) {
+    usersRef.child(userId).off();
+    usersRef.child(userId).child('status').off();
+    usersRef.child(userId).child('status').on('value', function (snap) {
       let status = snap.val();
       if (status) {
         console.log("User is", status);
@@ -380,20 +382,20 @@ let addUserStatusListener = function (userReference, userId) {
       }
     });
   } else {
-    console.log("FATAL: Users firebase references is", userReference);
+    console.log("FATAL: Users firebase references is", usersRef);
   }
 };// end addUserStatusListener()
-let removeAllUserListeners = function (userReference, userId) {
-  if (userReference && userId) {
-    userReference.child(userId).child('call').off();
-    userReference.child(userId).child('status').off();
+let removeAllUserListeners = function (usersRef, userId) {
+  if (usersRef && userId) {
+    usersRef.child(userId).child('call').off();
+    usersRef.child(userId).child('status').off();
   } else {
-    console.log("FATAL: Users firebase references is", userReference);
+    console.log("FATAL: Users firebase references is", usersRef);
   }
 }
-let addIncomingCallListeners = function (userReference, userId) {
-  if (userReference && userId) {
-    userReference.child(userId).child('call').on('value', function (snap) {
+let addIncomingCallListeners = function (usersRef, userId) {
+  if (usersRef && userId) {
+    usersRef.child(userId).child('call').on('value', function (snap) {
       let newCallKey = snap.val();
       if (newCallKey) {
         console.log("Received: callKey=", newCallKey);
@@ -405,7 +407,7 @@ let addIncomingCallListeners = function (userReference, userId) {
             window.currentCall.callKey = newCallKey;
             if (callStats.state != "CONNECTING") {
               console.log("WARN: invalid call state", callStats.state);
-              userReference.child(userId).child('call').remove();
+              phoneDirRef.child(userId).child('call').remove();
               window.currentCall = {};
             } else {
               //on success start listening for the call state changes
@@ -444,7 +446,7 @@ let addIncomingCallListeners = function (userReference, userId) {
               });
 
               //get caller details
-              userReference.child(callStats.from).once('value', function (snap) {
+              window.phoneDirRef.child(callStats.from).once('value', function (snap) {
                 let caller = snap.val();
                 if (caller) {
                   popupCall(caller, function (accepted) {
@@ -454,9 +456,9 @@ let addIncomingCallListeners = function (userReference, userId) {
                         if (err) {
                           console.log("ERROR: send call ack", err);
                           if (err.code == "INVALID_KEY") {
-                            userReference.child(userId).child('call').remove();
+                            phoneDirRef.child(userId).child('call').remove();
                           } else if (err.code == "INVALID_CALL_STATE") {
-                            userReference.child(userId).child('call').remove();
+                            phoneDirRef.child(userId).child('call').remove();
                           }
                           return;
                         }
@@ -487,17 +489,19 @@ let addIncomingCallListeners = function (userReference, userId) {
                       window.myFirebaseObj.clearCurrentCall();
                     }
                   });
+                } else {
+                  console.log("User not there on phone directory.", callStats.from);
                 }
               });
             }
           } else {
             console.log("Error: Call already terminated.");
-            userReference.child(userId).child('call').remove();
+            usersRef.child(userId).child('call').remove();
           }
         });
       }
     });
   } else {
-    console.log("ERROR: Cannot listen to incoming calls.", userReference, userId);
+    console.log("ERROR: Cannot listen to incoming calls.", usersRef, userId);
   }
 };// end add Incoming CallListeners()

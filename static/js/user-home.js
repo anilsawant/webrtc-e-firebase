@@ -1,6 +1,7 @@
 window.onload = function () {
   initializeFirebase();
   setupLogin();
+  setupSignup();
   setupHome();
 }
 let setupHome = function () {
@@ -60,8 +61,8 @@ let setupContactsBook = function () {
 
   txtSearchUsers.value = '';
   txtSearchUsers.setAttribute('disabled',true);
-  if (window.userReference) {
-    window.userReference.on('value', function (snap) {
+  if (window.phoneDirRef) {
+    window.phoneDirRef.on('value', function (snap) {
       window.contacts = snap.val();
       if (window.contacts) {
         window.contactIds = Object.keys(window.contacts);
@@ -69,7 +70,7 @@ let setupContactsBook = function () {
       }
     });
   } else {
-    console.log("ERROR: Cannot setup contacts book. userRef is", userRef);
+    console.log("ERROR: Cannot setup contacts book. phoneDirRef is", phoneDirRef);
   }
 
   btnToggleLeftSlider.addEventListener('click', function () {
@@ -101,7 +102,7 @@ let setupContactsBook = function () {
             let contactLi = document.createElement('li');
             contactLi.className = 'contact';
             contactLi.innerHTML = `<span class="glyphicon glyphicon-user"></span>
-                                  ${contact.name} (${contact.userId})
+                                  ${contact.username} (${contact.userId})
                                   <span data-callerid='${contact.userId}' class="glyphicon glyphicon-earphone"></span>`;
             searchContactsList.appendChild(contactLi);
           }
@@ -132,7 +133,7 @@ let setupContactsBook = function () {
         if (callerId == window.user.userId) {
           alert("Smart guy! Cannot call yourself.")
         } else {
-          window.userReference.child(callerId).once('value', function (snap) {
+          window.phoneDirRef.child(callerId).once('value', function (snap) {
             let caller = snap.val();
             if (caller) {
               initiateCall(caller, function (err, result) {
@@ -144,6 +145,8 @@ let setupContactsBook = function () {
                   console.log("SUCCESS: Call initiated :)");
                 }
               });// ./ end initiate call()
+            } else {
+              console.log("Caller does not exist on phone directory.", callerId);
             }
           });// ./ end get caller details
         }

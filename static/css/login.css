@@ -58,3 +58,19 @@ body * {
     padding-bottom: 30px;
   }
 }
+
+
+
+.signupCard {
+  margin-top: 30px;
+}
+.signupCard .body {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+.signupCard .body>* {
+  margin-bottom: 2px;
+}
+.signupCard .body>*:last-child {
+  margin-bottom: 0;
+}
