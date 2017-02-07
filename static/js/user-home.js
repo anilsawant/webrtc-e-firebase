@@ -1,39 +1,14 @@
 window.onload = function () {
-  initializeFirebase();
+  // initializeFirebase();
   setupLogin();
   setupSignup();
   setupHome();
 }
 let setupHome = function () {
-  setupContactsBook();
+  setupPhoneBook();
   setupVideoCall();
 
-  let btnLogout = document.getElementById('btnLogout'),
-      btnTakeBreak = document.getElementById('btnTakeBreak');
-
-  btnTakeBreak.addEventListener('click', function (evt) {
-    if (evt.target.textContent == 'Take Break') {
-      window.myFirebaseObj.takeBreak(function (err, result) {
-        if (err) {
-          console.log("ERROR: Take break", err);
-          return;
-        }
-        if (result == true) {
-          evt.target.textContent = 'End Break';
-        }
-      });
-    } else {
-      window.myFirebaseObj.endBreak(function (err, result) {
-        if (err) {
-          console.log("ERROR: End break", err);
-          return;
-        }
-        if (result == true) {
-          evt.target.textContent = 'Take Break';
-        }
-      });
-    }
-  });
+  let btnLogout = document.getElementById('btnLogout');
   btnLogout.addEventListener('click', function (evt) {
     evt.preventDefault();
     window.myFirebaseObj.logout(function (err, result) {
@@ -47,7 +22,7 @@ let setupHome = function () {
     });
   });
 }
-let setupContactsBook = function () {
+let setupPhoneBook = function () {
   let contactsContainer = document.querySelector('.contacts-container'),
       txtSearchUsers = contactsContainer.querySelector('.txt-search-users'),
       btnSearchContacts = contactsContainer.querySelector('#btnSearchContacts'),
@@ -70,7 +45,7 @@ let setupContactsBook = function () {
       }
     });
   } else {
-    console.log("ERROR: Cannot setup contacts book. phoneDirRef is", phoneDirRef);
+    console.log("ERROR: Cannot setup contacts book. phoneDirRef is", window.phoneDirRef);
   }
 
   btnToggleLeftSlider.addEventListener('click', function () {
@@ -155,6 +130,60 @@ let setupContactsBook = function () {
       }
     }
   }); // ./end search ContactsList click()
+
+  setupContactGroupsTab();
+  setupAddGroupTab();
+}
+let setupContactGroupsTab = function () {
+  let contactGroupsTab = document.getElementById("contactGroupsTab");
+  contactGroupsTab.addEventListener('click', function (evt) {
+    if (evt.target.className.includes('delete')) {
+      evt.stopPropagation();
+      let $groupDiv = $(evt.target).parents('.group'),
+          groupName = $groupDiv.find('.group-name').text();
+      console.log("Delete group", groupName);
+    }
+  });
+}
+let setupAddGroupTab = function () {
+  let addContactsTab = document.getElementById('addContactsTab'),
+      contactGroupsTab = document.getElementById("contactGroupsTab"),
+      txtGroupName = addContactsTab.querySelector('.txt-group-name'),
+      btnCreateGroup = addContactsTab.querySelector('.btn-create-group'),
+      $alert = $(addContactsTab).find('.alert');
+
+  btnCreateGroup.addEventListener('click', function () {
+    let newGroupName = txtGroupName.value.trim();
+    if (newGroupName) {
+      $alert.slideUp();
+      let newGroup = document.createElement('div'),
+          groupId = "collapse" + newGroupName;
+      newGroup.className = "group";
+      newGroup.innerHTML = `<div class="header" data-toggle="collapse" data-parent="#contactGroupsTab" data-target="#${groupId}" aria-expanded="true" aria-controls="${groupId}">
+          <span class="glyphicon glyphicon-triangle-right"></span>
+          <span class="group-name">${newGroupName}</span>
+          <span class="delete">&times;</span>
+        </div>
+        <div id="${groupId}" class="collapse">
+          <div class="body">
+            <ul class="contacts">
+              No contacts in this group...
+            </ul>
+          </div>
+        </div>`;
+      contactGroupsTab.appendChild(newGroup);
+      txtGroupName.value = '';
+      $alert.removeClass("alert-danger")
+            .addClass("alert-success")
+              .find('.msg').text("Group added :)");
+      $alert.slideDown();
+    } else {
+      $alert.removeClass("alert-success")
+            .addClass("alert-danger")
+              .find('.msg').text("Enter the new group's name.")
+      $alert.slideDown();
+    }
+  });
 }
 let toggleLeftSlider = function () {
   let leftSlider = document.querySelector('.left-slider');
@@ -237,7 +266,7 @@ let initiateCall = function (caller, done) {
                       break;
                     case "ACTIVE":
                       if (!window.currentCall.isTimedOut) {
-                        clearTimeout(window.currentCall.timeout);//clear ack wait timeout
+                        clearTimeout(window.currentCall.timeout);//clear ack-wait timeout
                       }
                       break;
                     case "TIMEDOUT":

@@ -18,7 +18,7 @@
     <script src="static/js/adapter.js" charset="utf-8"></script>
   </head>
   <body>
-    <div class="login-overlay">
+    <div class="login-overlay" style="display:none;">
       <div class="container-fluid">
         <div class="row">
           <div class="col-xs-12 col-sm-6 col-sm-offset-3 loginCard">
@@ -93,7 +93,7 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
               </button>
-              <a class="navbar-brand" href="#" title="Home">WebRTC | Firebase</a>
+              <a class="navbar-brand" href="#" title="Home">WebRTC + Firebase</a>
             </div>
 
             <!-- Collect the nav links, forms, and other content for toggling -->
@@ -113,14 +113,14 @@
         </nav>
       </div>
       <main class="row full-height pos-rel" style="overflow:hidden;">
-        <section class="left-slider full-height">
+        <section class="left-slider full-height open">
           <span class="toggle-btn glyphicon glyphicon-book" title="Contacts"></span>
           <div class="contacts-container full-height">
-            <div class="input-group">
+            <div class="input-group" style="padding:8px 5px 5px;">
               <input type="text" class="form-control txt-search-users" placeholder="Search someone">
               <span id="btnSearchContacts"  class="input-group-addon cur-pointer"><span class="glyphicon glyphicon-search"></span></span>
             </div>
-            <div class="search-container" style="padding-top:5px;height:calc(100% - 34px);">
+            <div class="search-container">
               <div class="header">
                 <span class="glyphicon glyphicon-chevron-left"></span> <span class="title" style="font-weight:bold;margin-left:10px;">Search result</span>
               </div>
@@ -133,7 +133,7 @@
                 </ul>
               </div>
             </div>
-            <div class="own-contacts" style="padding-top:5px;">
+            <div class="own-contacts">
               <ul class="nav nav-tabs" role="tablist">
                 <li role="presentation" class="active"><a href="#contactGroupsTab" aria-controls="contactGroupsTab" role="tab" data-toggle="tab">Groups</a></li>
                 <li role="presentation"><a href="#contactStatusTab" aria-controls="contactStatusTab" role="tab" data-toggle="tab">Status</a></li>
@@ -141,164 +141,68 @@
               </ul>
               <div class="tab-content">
                 <div role="tabpanel" class="tab-pane active fade in" id="contactGroupsTab">
-                  <div class="panel-group" id="groupsAccordion" role="tablist" aria-multiselectable="true">
-                    <div class="panel panel-default">
-                      <div class="panel-heading" role="tab">
-                        <h4 class="panel-title collapsed" role="button" data-toggle="collapse" data-parent="#groupsAccordion" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                          <span class="glyphicon glyphicon-triangle-right"></span> Friends
-                        </h4>
-                      </div>
-                      <div id="collapseOne" class="panel-collapse collapse" role="tabpanel">
-                        <div class="panel-body">
-                          <ul class="contacts">
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Anil Sawant
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                          </ul>
-                        </div>
+                  <div class="group">
+                    <div class="header" data-toggle="collapse" data-parent="#contactGroupsTab" data-target="#collapseFriends" aria-expanded="true" aria-controls="collapseFriends">
+                      <span class="glyphicon glyphicon-triangle-right"></span>
+                      <span class="group-name">Friends</span>
+                      <span class="delete">&times;</span>
+                    </div>
+                    <div id="collapseFriends" class="collapse">
+                      <div class="body">
+                        <ul class="contacts">
+                          <li class="contact">
+                            <span class="glyphicon glyphicon-user"></span> Anil Sawant
+                            <span class="glyphicon glyphicon-earphone"></span>
+                          </li>
+                          <li class="contact">
+                            <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
+                            <span class="glyphicon glyphicon-earphone"></span>
+                          </li>
+                          <li class="contact">
+                            <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
+                            <span class="glyphicon glyphicon-earphone"></span>
+                          </li>
+                        </ul>
                       </div>
                     </div>
-                    <div class="panel panel-default">
-                      <div class="panel-heading" role="tab">
-                        <h4 class="panel-title collapsed" role="button" data-toggle="collapse" data-parent="#groupsAccordion" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                          <span class="glyphicon glyphicon-triangle-right"></span> Project xyz
-                        </h4>
-                      </div>
-                      <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel">
-                        <div class="panel-body">
-                          <ul class="contacts">
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Anil Sawant
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
+                  </div>
+                  <div class="group">
+                    <div class="header" data-toggle="collapse" data-parent="#contactGroupsTab" data-target="#collapseProjectxyz" aria-expanded="false" aria-controls="collapseProjectxyz">
+                      <span class="glyphicon glyphicon-triangle-right"></span>
+                      <span class="group-name">Project xyz</span>
+                      <span class="delete">&times;</span>
                     </div>
-                    <div class="panel panel-default">
-                      <div class="panel-heading" role="tab">
-                        <h4 class="panel-title collapsed" role="button" data-toggle="collapse" data-parent="#groupsAccordion" data-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                          <span class="glyphicon glyphicon-triangle-right"></span> Expert experts
-                        </h4>
-                      </div>
-                      <div id="collapseThree" class="panel-collapse collapse" role="tabpanel">
-                        <div class="panel-body">
-                          <ul class="contacts">
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Anil Sawant
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                          </ul>
-                        </div>
+                    <div id="collapseProjectxyz" class="collapse">
+                      <div class="body">
+                        <ul class="contacts">
+                          <li class="contact">
+                            <span class="glyphicon glyphicon-user"></span> Anil Sawant
+                            <span class="glyphicon glyphicon-earphone"></span>
+                          </li>
+                          <li class="contact">
+                            <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
+                            <span class="glyphicon glyphicon-earphone"></span>
+                          </li>
+                          <li class="contact">
+                            <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
+                            <span class="glyphicon glyphicon-earphone"></span>
+                          </li>
+                        </ul>
                       </div>
                     </div>
                   </div>
                 </div>
                 <div role="tabpanel" class="tab-pane" id="contactStatusTab">
-                  <div class="panel-group" id="statusAccordion" role="tablist" aria-multiselectable="true">
-                    <div class="panel panel-default">
-                      <div class="panel-heading" role="tab">
-                        <h4 class="panel-title collapsed" role="button" data-toggle="collapse" data-parent="#statusAccordion" data-target="#collapseStatusOnline" aria-expanded="false" aria-controls="collapseStatusOnline">
-                          <span class="glyphicon glyphicon-triangle-right"></span> Online
-                        </h4>
-                      </div>
-                      <div id="collapseStatusOnline" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
-                        <div class="panel-body">
-                          <ul class="contacts">
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Anil Sawant
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="panel panel-default">
-                      <div class="panel-heading" role="tab">
-                        <h4 class="panel-title collapsed" role="button" data-toggle="collapse" data-parent="#statusAccordion" data-target="#collapseStatusBusy" aria-expanded="false" aria-controls="collapseStatusBusy">
-                          <span class="glyphicon glyphicon-triangle-right"></span> Busy
-                        </h4>
-                      </div>
-                      <div id="collapseStatusBusy" class="panel-collapse collapse" role="tabpanel">
-                        <div class="panel-body">
-                          <ul class="contacts">
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Anil Sawant
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="panel panel-default">
-                      <div class="panel-heading" role="tab">
-                        <h4 class="panel-title collapsed" role="button" data-toggle="collapse" data-parent="#statusAccordion" data-target="#collapseStatusOffline" aria-expanded="false" aria-controls="collapseStatusOffline">
-                          <span class="glyphicon glyphicon-triangle-right"></span> Offline
-                        </h4>
-                      </div>
-                      <div id="collapseStatusOffline" class="panel-collapse collapse" role="tabpanel">
-                        <div class="panel-body">
-                          <ul class="contacts">
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Anil Sawant
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                            <li class="contact">
-                              <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
-                              <span class="glyphicon glyphicon-earphone"></span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  Status
                 </div>
-                <div role="tabpanel" class="tab-pane" id="addContactsTab">Add contact</div>
+                <div role="tabpanel" class="tab-pane" id="addContactsTab">
+                  <input type="text" class="form-control txt-group-name" placeholder="Enter your new group's name here" style="margin-bottom:5px;">
+                  <div class="alert alert-danger" style="display:none">
+                    <span class="close" onclick="$(this.parentNode).slideUp();">&times;</span>
+                    <span class="msg">This is the msg</span>
+                  </div>
+                  <button class="btn btn-sm btn-info btn-create-group">Create group</button>
+                </div>
               </div>
             </div>
           </div>
@@ -309,7 +213,7 @@
               <span class="margin-auto" style="color:#eee;font-family:verdana;font-size:40px;font-weight:bold;">Hola! Hola!</span>
             </div>
             <div>
-              <button type="button" class="btn btn-warning" id="btnTakeBreak">Take Break</button>
+
             </div>
           </div>
         </section>

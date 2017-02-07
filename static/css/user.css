@@ -7,7 +7,6 @@ body {
   border-right: 1px solid #111;
   color: #ddd;
   height: 100%;
-  padding: 5px;
   position: absolute;
   margin-left: -290px;
   transition: margin-left .3s ease;
@@ -35,6 +34,7 @@ body {
 }
 .left-slider .form-control {
   box-shadow: none !important;
+  height: 30px;
 }
 @media (min-width:768px) {
   .left-slider {
@@ -45,7 +45,7 @@ body {
 
 ul.contacts {
   margin: 0;
-  padding: 0 0 0 20px;
+  padding: 0 0 0 10px;
   list-style: none;
 }
 ul.contacts li {
@@ -55,6 +55,10 @@ ul.contacts li .glyphicon-earphone {
   cursor: pointer;
   font-size: 16px;
   float: right;
+}
+.search-container {
+  padding-top:5px;
+  height:calc(100% - 34px);
 }
 .search-container ul.contacts {
   overflow-y: auto;
@@ -79,6 +83,65 @@ ul.contacts li .glyphicon-earphone {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
+
+/******* tabs styling *******/
+ul.nav-tabs {
+  border-bottom: 1px solid #191919;
+  padding-left: 2px;
+}
+.nav-tabs>li>a {
+  padding: 5px 7px;
+  transition: background-color .3s linear;
+}
+.nav-tabs>li.active>a,
+.nav-tabs>li.active>a:focus,
+.nav-tabs>li.active>a:hover {
+  color: #aaa;
+  cursor: default;
+  background-color: #292929;
+  border: 1px solid #191919;
+  border-bottom-color: transparent;
+}
+.nav-tabs>li>a:hover {
+  border-color: #191919 #191919 #191919;
+}
+.nav-tabs>li>a:focus,
+.nav-tabs>li>a:hover {
+  background-color: #292929;
+}
+#addContactsTab {
+  padding: 5px;
+}
+#addContactsTab .alert {
+  margin-bottom: 5px;
+  padding: 7px 10px;
+}
+#contactGroupsTab .group {
+  border-bottom: 1px solid #333;
+}
+#contactGroupsTab .header {
+  cursor: pointer;
+  padding: 5px 0;
+}
+#contactGroupsTab .header .delete {
+  color: #aaa;
+  display: none;
+  float: right;
+  font-size: 16px;
+  line-height: 16px;
+  margin-right: 10px;
+}
+#contactGroupsTab .header:hover .delete {
+  display: inline-block;
+}
+#contactGroupsTab .header .delete:hover {
+  color: red;
+}
+#contactGroupsTab .body {
+  background-color: #252525;
+}
+/****** end tabs styling *******/
+
 
 .incoming-call-overlay {
   background-color: rgba(10,10,10,.7);
