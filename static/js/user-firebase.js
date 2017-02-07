@@ -371,10 +371,9 @@ let addUserStatusListener = function (usersRef, userId) {
         console.log("User is", status);
         switch (status) {
           case "online":
-            window.$loginOverlay.slideUp();
             break;
           case "offline":
-            window.$loginOverlay.slideDown();
+            window.location.href = "signin.html";
             break;
           case "busy":
             break;

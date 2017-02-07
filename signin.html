@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>WebRTC + Firebase</title>
+    <link rel="stylesheet" href="static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="static/css/font-awesome.min.css">
+    <link rel="stylesheet" href="static/css/commons.css">
+    <link rel="stylesheet" href="static/css/login.css">
+
+    <script src="static/js/jquery.min.js" charset="utf-8"></script>
+    <script src="static/js/bootstrap.min.js" charset="utf-8"></script>
+    <script src="static/js/firebase-3.6.5/firebase-app.js" charset="utf-8"></script>
+    <script src="static/js/firebase-3.6.5/firebase-database.js" charset="utf-8"></script>
+  </head>
+  <body>
+    <div class="login-overlay">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-xs-12 col-sm-6 col-sm-offset-3 loginCard">
+            <div class="header display-flex">
+              <span class="margin-auto display-flex">
+                <span class="firebase-logo margin-auto"><img src="static/img/firebase.png" alt=""></span>
+                <span class="margin-auto" style="color:#fff;font-size:22px;font-family:verdana;font-weight:bold;">WebRTC + Firebase</span>
+              </span>
+            </div>
+            <form class="body">
+              <input id="txtLoginId" type="text" class="form-control" placeholder="Enter login id">
+              <input id="txtPassword" type="password" class="form-control" placeholder="Password">
+            </form>
+            <div class="alert alert-danger" role="alert" style="margin-top:10px;display:none;">
+              <button type="button" class="close" aria-label="Close" onclick="$(this.parentNode).slideUp();"><span aria-hidden="true">&times;</span></button>
+              <span class="msg">This is an alert!</span>
+            </div>
+            <div class="footer">
+              <button id="btnSignIn" type="button" class="btn btn-lg btn-block btn-info">Sign In</button>
+            </div>
+            <div class="">
+              <span id="spanResetPassword" style="color:#09c;font-size:15px;cursor:pointer;">Reset password</span>
+              <span id="spanSignUp" class="pull-right" style="color:#09c;font-size:15px;cursor:pointer;">Sign Up</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="signup-overlay" style="display:none;">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-xs-12 col-sm-6 col-sm-offset-3 signupCard">
+            <div class="header display-flex">
+              <span class="margin-auto display-flex">
+                <span class="firebase-logo margin-auto"><img src="static/img/firebase.png" alt=""></span>
+                <span class="margin-auto" style="color:#fff;font-size:22px;font-family:verdana;font-weight:bold;">WebRTC + Firebase</span>
+              </span>
+            </div>
+            <div class="body">
+              <input type="text" class="form-control txt-login-id" placeholder="Enter login id">
+              <input type="password" class="form-control txt-password" placeholder="Enter Password">
+              <input type="password" class="form-control txt-c-password" placeholder="Confirm Password">
+              <input type="text" class="form-control txt-username" placeholder="Enter your name (optional)">
+              <input type="email" class="form-control txt-email" placeholder="Enter your email (optional)">
+              <input type="text" class="form-control txt-photo-url" placeholder="Paste ur online photo url (optional)">
+            </div>
+            <div class="alert alert-danger" role="alert" style="margin-top:10px;display:none;">
+              <button type="button" class="close" aria-label="Close" onclick="$(this.parentNode).slideUp();"><span aria-hidden="true">&times;</span></button>
+              <span class="msg">This is an alert!</span>
+            </div>
+            <div class="footer">
+              <button type="button" class="btn btn-lg btn-block btn-info btn-signup">Sign up</button>
+            </div>
+            <div class="" style="padding-top:10px;">
+              <span id="spanSignIn" class="pull-left" style="color:#09c;font-size:15px;cursor:pointer;">Sign In</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="static/js/user-login.js" charset="utf-8"></script>
+  </body>
+</html>

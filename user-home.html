@@ -18,69 +18,6 @@
     <script src="static/js/adapter.js" charset="utf-8"></script>
   </head>
   <body>
-    <div class="login-overlay" style="display:none;">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-xs-12 col-sm-6 col-sm-offset-3 loginCard">
-            <div class="header display-flex">
-              <span class="margin-auto display-flex">
-                <span class="firebase-logo margin-auto"><img src="static/img/firebase.png" alt=""></span>
-                <span class="margin-auto" style="color:#fff;font-size:22px;font-family:verdana;font-weight:bold;">WebRTC + Firebase</span>
-              </span>
-            </div>
-            <form class="body">
-              <input id="txtLoginId" type="text" class="form-control" placeholder="Enter login id">
-              <input id="txtPassword" type="password" class="form-control" placeholder="Password">
-            </form>
-            <div class="alert alert-danger" role="alert" style="margin-top:10px;display:none;">
-              <button type="button" class="close" aria-label="Close" onclick="$(this.parentNode).slideUp();"><span aria-hidden="true">&times;</span></button>
-              <span class="msg">This is an alert!</span>
-            </div>
-            <div class="footer">
-              <button id="btnSignIn" type="button" class="btn btn-lg btn-block btn-info">Sign In</button>
-            </div>
-            <div class="">
-              <span id="spanResetPassword" style="color:#09c;font-size:15px;cursor:pointer;">Reset password</span>
-              <span id="spanSignUp" class="pull-right" style="color:#09c;font-size:15px;cursor:pointer;">Sign Up</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="signup-overlay" style="display:none;">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-xs-12 col-sm-6 col-sm-offset-3 signupCard">
-            <div class="header display-flex">
-              <span class="margin-auto display-flex">
-                <span class="firebase-logo margin-auto"><img src="static/img/firebase.png" alt=""></span>
-                <span class="margin-auto" style="color:#fff;font-size:22px;font-family:verdana;font-weight:bold;">WebRTC + Firebase</span>
-              </span>
-            </div>
-            <div class="body">
-              <input type="text" class="form-control txt-login-id" placeholder="Enter login id">
-              <input type="password" class="form-control txt-password" placeholder="Enter Password">
-              <input type="password" class="form-control txt-c-password" placeholder="Confirm Password">
-              <input type="text" class="form-control txt-username" placeholder="Enter your name (optional)">
-              <input type="email" class="form-control txt-email" placeholder="Enter your email (optional)">
-              <input type="text" class="form-control txt-photo-url" placeholder="Paste ur online photo url (optional)">
-            </div>
-            <div class="alert alert-danger" role="alert" style="margin-top:10px;display:none;">
-              <button type="button" class="close" aria-label="Close" onclick="$(this.parentNode).slideUp();"><span aria-hidden="true">&times;</span></button>
-              <span class="msg">This is an alert!</span>
-            </div>
-            <div class="footer">
-              <button type="button" class="btn btn-lg btn-block btn-info btn-signup">Sign up</button>
-            </div>
-            <div class="" style="padding-top:10px;">
-              <span id="spanSignIn" class="pull-left" style="color:#09c;font-size:15px;cursor:pointer;">Sign In</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="container-fluid full-height">
       <div class="row">
         <nav class="navbar navbar-inverse navbar-fixed-top">
@@ -126,9 +63,18 @@
               </div>
               <div class="body" style="height:calc(100% - 20px);">
                 <ul class="contacts full-height">
-                  <!-- <li class="contact">
-                    <span class="glyphicon glyphicon-user"></span> Anil Sawant (callerId)
-                    <span data-callerid="" class="glyphicon glyphicon-earphone"></span>
+                  <!-- <li class="contact dropdown" data-callerid="">
+                    <span class="glyphicon glyphicon-user"></span>
+                    <span class="contact-name">Anil Sawant</span>
+                    (<span class="contact-id">Caller Id</span>)
+                    <span class="contact-ops">
+                      <span class="glyphicon glyphicon-earphone" title="Call callerId"></span>
+                      <span class="glyphicon glyphicon-plus" title="Add to group" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false"></span>
+                    </span>
+                    <ul class="dropdown-menu">
+                      <li><a href="#">Action</a></li>
+                      <li><a href="#">Another action</a></li>
+                    </ul>
                   </li> -->
                 </ul>
               </div>
@@ -141,7 +87,8 @@
               </ul>
               <div class="tab-content">
                 <div role="tabpanel" class="tab-pane active fade in" id="contactGroupsTab">
-                  <div class="group">
+                  Loading...
+                  <!-- <div class="group">
                     <div class="header" data-toggle="collapse" data-parent="#contactGroupsTab" data-target="#collapseFriends" aria-expanded="true" aria-controls="collapseFriends">
                       <span class="glyphicon glyphicon-triangle-right"></span>
                       <span class="group-name">Friends</span>
@@ -150,47 +97,16 @@
                     <div id="collapseFriends" class="collapse">
                       <div class="body">
                         <ul class="contacts">
+                          <span class='contacts-msg'>No contacts. Add from search.</span>
                           <li class="contact">
                             <span class="glyphicon glyphicon-user"></span> Anil Sawant
-                            <span class="glyphicon glyphicon-earphone"></span>
-                          </li>
-                          <li class="contact">
-                            <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
-                            <span class="glyphicon glyphicon-earphone"></span>
-                          </li>
-                          <li class="contact">
-                            <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
+                            <span class="glyphicon glyphicon-trash"></span>
                             <span class="glyphicon glyphicon-earphone"></span>
                           </li>
                         </ul>
                       </div>
                     </div>
-                  </div>
-                  <div class="group">
-                    <div class="header" data-toggle="collapse" data-parent="#contactGroupsTab" data-target="#collapseProjectxyz" aria-expanded="false" aria-controls="collapseProjectxyz">
-                      <span class="glyphicon glyphicon-triangle-right"></span>
-                      <span class="group-name">Project xyz</span>
-                      <span class="delete">&times;</span>
-                    </div>
-                    <div id="collapseProjectxyz" class="collapse">
-                      <div class="body">
-                        <ul class="contacts">
-                          <li class="contact">
-                            <span class="glyphicon glyphicon-user"></span> Anil Sawant
-                            <span class="glyphicon glyphicon-earphone"></span>
-                          </li>
-                          <li class="contact">
-                            <span class="glyphicon glyphicon-user"></span> Sachin Tendulkar
-                            <span class="glyphicon glyphicon-earphone"></span>
-                          </li>
-                          <li class="contact">
-                            <span class="glyphicon glyphicon-user"></span> Baichung Bhutia
-                            <span class="glyphicon glyphicon-earphone"></span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+                  </div> -->
                 </div>
                 <div role="tabpanel" class="tab-pane" id="contactStatusTab">
                   Status

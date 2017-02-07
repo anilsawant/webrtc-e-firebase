@@ -1,6 +1,8 @@
 body {
   background-color: #333;
   padding-top: 42px;
+  opacity: 0;
+  transition: opacity 1s ease;
 }
 .left-slider {
   background-color: #222;
@@ -51,10 +53,35 @@ ul.contacts {
 ul.contacts li {
   padding: 10px;
 }
-ul.contacts li .glyphicon-earphone {
+ul.contacts li .contact-ops {
+  display: none;
+  float: right;
+}
+ul.contacts li .glyphicon-earphone,
+ul.contacts li .glyphicon-trash,
+ul.contacts li .glyphicon-plus {
   cursor: pointer;
   font-size: 16px;
-  float: right;
+  margin: 0 5px;
+}
+ul.contacts li:hover .contact-ops {
+  cursor: pointer;
+  display: inline-block;
+}
+ul.contacts .dropdown-menu {
+  background-color: #444;
+  margin: 0;
+}
+ul.contacts .dropdown-menu li {
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+ul.contacts .dropdown-menu-right {
+  right: 2px;
+}
+ul.contacts .dropdown-menu li:hover {
+  cursor: pointer;
+  background-color: #3f3f3f;
 }
 .search-container {
   padding-top:5px;

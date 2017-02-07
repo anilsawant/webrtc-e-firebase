@@ -1,3 +1,18 @@
+window.onload = function () {
+  let config = {
+    apiKey: "AIzaSyDGGFYyPbrX6YtNGHIKzdUtAEpD4bnMM8o",
+    authDomain: "myfirebaseproject-c1059.firebaseapp.com",
+    databaseURL: "https://myfirebaseproject-c1059.firebaseio.com",
+    storageBucket: "myfirebaseproject-c1059.appspot.com",
+    messagingSenderId: "367980625448"
+  };
+  let app = window.app = firebase.initializeApp(config);
+  let fdb = window.fdb = firebase.database();
+  window.usersRef = window.fdb.ref("app2/users");
+  window.phoneDirRef = window.fdb.ref("app2/phoneDirectory");
+  setupLogin();
+  setupSignup();
+}
 let setupLogin = function () {
   let loginCard = document.querySelector('.loginCard'),
       txtLoginId = loginCard.querySelector('#txtLoginId'),
@@ -5,8 +20,6 @@ let setupLogin = function () {
       btnSignIn = loginCard.querySelector('#btnSignIn'),
       spanSignUp = loginCard.querySelector('#spanSignUp'),
       spanResetPassword = loginCard.querySelector('#spanResetPassword'),
-      navbar = document.querySelector('.navbar'),
-      userNameElm = navbar.querySelector('.username'),
       $alert = $('.loginCard .alert');
 
   window.$loginOverlay = $('.login-overlay');
@@ -29,10 +42,8 @@ let setupLogin = function () {
             if (password == user.password) {
               $alert.slideUp();
               window.usersRef.child(userId).child("status").set("online").then(function () {
-                window.user = user;
-                userNameElm.textContent = user.username;
-                addUserStatusListener(window.usersRef, userId);
-                addIncomingCallListeners(window.usersRef, window.user.userId);
+                window.localStorage.setItem("fireCallUser", JSON.stringify(user));
+                window.location.href = "user-home.html";
               });
             } else {
               $alert.find('.msg').html("Invalid password.");

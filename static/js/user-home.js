@@ -1,12 +1,25 @@
 window.onload = function () {
-  // initializeFirebase();
-  setupLogin();
-  setupSignup();
+  let fireCallUserStr = window.localStorage.getItem("fireCallUser");
+  if (fireCallUserStr) {
+    window.user = JSON.parse(fireCallUserStr);
+    document.body.style.opacity = 1;
+    initializeFirebase();
+    init();
+  } else {
+    window.location.href = "signin.html";
+  }
+}
+let init = function () {
+  document.querySelector('.navbar .username').textContent = window.user.username;
+  addUserStatusListener(window.usersRef, window.user.userId);
+  addIncomingCallListeners(window.usersRef, window.user.userId);
   setupHome();
 }
 let setupHome = function () {
+  setupContactGroupsTab();
   setupPhoneBook();
   setupVideoCall();
+  setupAddGroupTab();
 
   let btnLogout = document.getElementById('btnLogout');
   btnLogout.addEventListener('click', function (evt) {
@@ -18,6 +31,7 @@ let setupHome = function () {
       }
       if (result == true) {
         window.user = null;
+        window.localStorage.removeItem("fireCallUser");
       }
     });
   });
@@ -57,7 +71,7 @@ let setupPhoneBook = function () {
     if (evt.which == 13) {
       btnSearchContacts.click();
     }
-  })
+  });
   btnSearchContacts.addEventListener('click', function (evt) {
     evt.stopPropagation();
     if (!txtSearchUsers.disabled) {
@@ -76,9 +90,24 @@ let setupPhoneBook = function () {
           for (contact of matchedContacts) {
             let contactLi = document.createElement('li');
             contactLi.className = 'contact';
-            contactLi.innerHTML = `<span class="glyphicon glyphicon-user"></span>
-                                  ${contact.username} (${contact.userId})
-                                  <span data-callerid='${contact.userId}' class="glyphicon glyphicon-earphone"></span>`;
+            let contactInnerHtml = `<span class="glyphicon glyphicon-user"></span>
+                                  <span class="contact-name">${contact.username}</span>
+                                  (<span class="contact-id">${contact.userId}</span>)
+                                  <span class="contact-ops dropdown">
+                                    <span class="glyphicon glyphicon-earphone" title="Call ${contact.username}"></span>
+                                    <span class="glyphicon glyphicon-plus" title="Add to group" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false"></span>
+                                  `;
+            let groupsDropdown = `<ul class="dropdown-menu dropdown-menu-right">`;
+            let userGroups = (window.user.phoneBook && window.user.phoneBook.groups) ? Object.keys(window.user.phoneBook.groups) : [];
+            if (!userGroups.length) {
+              groupsDropdown += "<li>No groups. Add from the '+ Add' tab.</li>"
+            } else {
+              for (group of userGroups) {
+                groupsDropdown += '<li class="add-to-group">' + group + '</li>';
+              }
+            }
+            groupsDropdown += "</ul></span>";
+            contactLi.innerHTML = contactInnerHtml + groupsDropdown;
             searchContactsList.appendChild(contactLi);
           }
           $ownContactsContainer.hide(function () {
@@ -101,9 +130,10 @@ let setupPhoneBook = function () {
     }
   });
   searchContactsList.addEventListener('click', function (evt) {
-    evt.stopPropagation();
     if (evt.target.className.includes('glyphicon-earphone')) {
-      let callerId = evt.target.getAttribute('data-callerid');
+      evt.stopPropagation();
+      let $contact = $(evt.target).parents('.contact');
+      let callerId = $contact.find('.contact-id').text();
       if (callerId) {
         if (callerId == window.user.userId) {
           alert("Smart guy! Cannot call yourself.")
@@ -126,22 +156,101 @@ let setupPhoneBook = function () {
           });// ./ end get caller details
         }
       } else {
-        console.log("Can't call to ", callTo);
+        console.log("Can't call to ", callerId);
+      }
+    } else if (evt.target.className.includes('add-to-group')) {
+      let groupName = evt.target.textContent,
+          $contact = $(evt.target).parents('.contact'),
+          contactId = $contact.find('.contact-id').text(),
+          contactName = $contact.find('.contact-name').text();
+      if (groupName && contactId && contactName) {
+        window.usersRef.child(window.user.userId)
+            .child("phoneBook").child("groups")
+              .child(groupName).child(contactId).set(contactName)
+              .then(function () {
+                alert(contactName + ' added to ' + groupName + ".")
+              });
+      } else {
+        console.log("ERROR: Cannot add to group.", groupName, contactId, contactName);
       }
     }
   }); // ./end search ContactsList click()
-
-  setupContactGroupsTab();
-  setupAddGroupTab();
 }
 let setupContactGroupsTab = function () {
-  let contactGroupsTab = document.getElementById("contactGroupsTab");
+  let contactGroupsTabId = "contactGroupsTab",
+      contactGroupsTab = document.getElementById(contactGroupsTabId);
   contactGroupsTab.addEventListener('click', function (evt) {
     if (evt.target.className.includes('delete')) {
       evt.stopPropagation();
       let $groupDiv = $(evt.target).parents('.group'),
           groupName = $groupDiv.find('.group-name').text();
-      console.log("Delete group", groupName);
+      if (confirm("Delete group " + groupName + "?")) {
+        window.usersRef.child(window.user.userId)
+          .child("phoneBook").child("groups").child(groupName).remove();
+      }
+    }
+  });
+  window.usersRef.child(window.user.userId).child("phoneBook").child("groups").on('value', function (snap) {
+    let userGroupsObj = snap.val();
+    if (userGroupsObj) {
+      if (window.user.phoneBook) {
+        window.user.phoneBook.groups = userGroupsObj;
+      } else {
+        window.user.phoneBook = {
+          "groups": userGroupsObj
+        }
+      }
+      let userGroups = Object.keys(userGroupsObj);
+      if (userGroups && userGroups.length) {
+        contactGroupsTab.innerHTML = '';
+        contactGroupsTab.style.paddingLeft = 0;
+        for (groupName of userGroups) {
+          let groupId = groupName.replace(/ +/g,''),
+              groupMembers = userGroupsObj[groupName],
+              newGroupDiv = document.createElement('div');
+          newGroupDiv.className = "group";
+          let groupInnerHtml = `
+          <div class="header" data-toggle="collapse" data-parent="#${contactGroupsTabId}" data-target="#collapse${groupId}" aria-expanded="true" aria-controls="collapse${groupId}">
+            <span class="glyphicon glyphicon-triangle-right"></span>
+            <span class="group-name">${groupName}</span>
+            <span class="delete">&times;</span>
+          </div>
+          <div id="collapse${groupId}" class="collapse">
+            <div class="body">
+              <ul class="contacts">`;
+          let contactsStr = "No contacts. Add from search.";
+          if (groupMembers) {
+            let contacts = Object.keys(groupMembers);
+            if (contacts.length) {
+              contactsStr = "";
+              for (contactId of contacts) {
+                contactsStr += `<li class="contact" data-callerid="${contactId}">
+                  <span class="glyphicon glyphicon-user"></span> ${groupMembers[contactId]} (${contactId})
+                  <span class="contact-ops">
+                    <span class="glyphicon glyphicon-earphone" title="Call ${groupMembers[contactId]}"></span>
+                    <span class="glyphicon glyphicon-trash" title="Delete from group"></span>
+                  </span>
+                </li>`
+              }
+            }
+          }
+          groupInnerHtml += (contactsStr + "</ul></div></div>");
+          newGroupDiv.innerHTML = groupInnerHtml
+          contactGroupsTab.appendChild(newGroupDiv);
+        }
+      } else {
+        contactGroupsTab.textContent = "No groups. Add from '+ Add' tab."
+        contactGroupsTab.style.paddingLeft = "2px";
+        if (window.user.phoneBook) {
+          window.user.phoneBook.groups = undefined;
+        }
+      }
+    } else {
+      contactGroupsTab.textContent = "No groups. Add from '+ Add' tab."
+      contactGroupsTab.style.paddingLeft = "2px";
+      if (window.user.phoneBook) {
+        window.user.phoneBook.groups = undefined;
+      }
     }
   });
 }
@@ -155,28 +264,25 @@ let setupAddGroupTab = function () {
   btnCreateGroup.addEventListener('click', function () {
     let newGroupName = txtGroupName.value.trim();
     if (newGroupName) {
+      if (window.user.phoneBook && window.user.phoneBook.groups) {
+        if (window.user.phoneBook.groups[newGroupName.toUpperCase()]) {
+          $alert.removeClass("alert-success")
+                .addClass("alert-danger")
+                  .find('.msg').text("Group already exists!");
+          $alert.slideDown();
+          return;
+        }
+      }
       $alert.slideUp();
-      let newGroup = document.createElement('div'),
-          groupId = "collapse" + newGroupName;
-      newGroup.className = "group";
-      newGroup.innerHTML = `<div class="header" data-toggle="collapse" data-parent="#contactGroupsTab" data-target="#${groupId}" aria-expanded="true" aria-controls="${groupId}">
-          <span class="glyphicon glyphicon-triangle-right"></span>
-          <span class="group-name">${newGroupName}</span>
-          <span class="delete">&times;</span>
-        </div>
-        <div id="${groupId}" class="collapse">
-          <div class="body">
-            <ul class="contacts">
-              No contacts in this group...
-            </ul>
-          </div>
-        </div>`;
-      contactGroupsTab.appendChild(newGroup);
-      txtGroupName.value = '';
-      $alert.removeClass("alert-danger")
-            .addClass("alert-success")
-              .find('.msg').text("Group added :)");
-      $alert.slideDown();
+      btnCreateGroup.setAttribute("disabled", true);
+      window.usersRef.child(window.user.userId).child("phoneBook").child("groups").child(newGroupName.toUpperCase()).set(true).then(function () {
+        txtGroupName.value = '';
+        $alert.removeClass("alert-danger")
+              .addClass("alert-success")
+                .find('.msg').text("Group added :)");
+        $alert.slideDown();
+        btnCreateGroup.removeAttribute("disabled");
+      });
     } else {
       $alert.removeClass("alert-success")
             .addClass("alert-danger")
@@ -209,7 +315,6 @@ let setupVideoCall = function () {
     endCallHandler(true);
   });
 }
-
 let initiateCall = function (caller, done) {
   if (done && typeof done == 'function') {
     hideLeftSlider();
