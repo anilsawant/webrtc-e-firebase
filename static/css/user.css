@@ -77,7 +77,7 @@ ul.contacts .dropdown-menu li {
   white-space: nowrap;
 }
 ul.contacts .dropdown-menu-right {
-  right: 2px;
+  right: 0;
 }
 ul.contacts .dropdown-menu li:hover {
   cursor: pointer;
@@ -94,21 +94,6 @@ ul.contacts .dropdown-menu li:hover {
   color: #09f;
   cursor: pointer;
   margin-left: 5px;
-}
-.tab-pane .panel-group .panel {
-  border: none;
-  border-bottom: 1px solid #ddd;
-  box-shadow: none;
-  margin-top: 0;
-}
-.panel-collapse .panel-body {
-  background-color: #f0f0f0;
-  color: #333;
-  padding: 0;
-}
-.panel-heading {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
 }
 
 /******* tabs styling *******/
@@ -143,14 +128,14 @@ ul.nav-tabs {
   margin-bottom: 5px;
   padding: 7px 10px;
 }
-#contactGroupsTab .group {
+.own-contacts .group {
   border-bottom: 1px solid #333;
 }
-#contactGroupsTab .header {
+.own-contacts .group .header {
   cursor: pointer;
   padding: 5px 0;
 }
-#contactGroupsTab .header .delete {
+.own-contacts .group .header .delete-group {
   color: #aaa;
   display: none;
   float: right;
@@ -158,13 +143,13 @@ ul.nav-tabs {
   line-height: 16px;
   margin-right: 10px;
 }
-#contactGroupsTab .header:hover .delete {
+.own-contacts .group .header:hover .delete-group {
   display: inline-block;
 }
-#contactGroupsTab .header .delete:hover {
+.own-contacts .group .header .delete-group:hover {
   color: red;
 }
-#contactGroupsTab .body {
+.own-contacts .group .body {
   background-color: #252525;
 }
 /****** end tabs styling *******/
@@ -211,7 +196,6 @@ ul.nav-tabs {
   height: 100%;
   left: 0;
   position: absolute;
-  padding: 20px 50px;
   top: 0;
   width: 100%;
 }
@@ -254,10 +238,10 @@ ul.nav-tabs {
   border-radius: 2px;
   bottom: 50px;
   height: auto;
-  max-width: 200px;
-  max-height: 200px;
+  max-width: 100px;
+  max-height: 100px;
   position: absolute;
-  right: 50px;
+  right: 5px;
   width: auto;
 }
 .video-container .call-controls {
@@ -281,5 +265,15 @@ ul.nav-tabs {
 .video-container .call-controls span:hover {
   cursor: pointer;
   font-size: 32px;
+}
+@media (min-width:768px) {
+  .video-overlay {
+    padding: 20px 50px;
+  }
+  .video-container video#localVideo {
+    max-width: 200px;
+    max-height: 200px;
+    right: 50px;
+  }
 }
 /******* End Video styling *********/

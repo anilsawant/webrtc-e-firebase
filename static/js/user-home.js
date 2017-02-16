@@ -82,7 +82,7 @@ let setupPhoneBook = function () {
         $searchContainer.slideUp();
         if (window.contactIds) {
           for (id of window.contactIds) {
-            if (id.includes(qId)) {
+            if (id.includes(qId) && id != window.user.userId) {
               matchedContacts.push(window.contacts[id]);
             }
           }
@@ -180,13 +180,55 @@ let setupContactGroupsTab = function () {
   let contactGroupsTabId = "contactGroupsTab",
       contactGroupsTab = document.getElementById(contactGroupsTabId);
   contactGroupsTab.addEventListener('click', function (evt) {
-    if (evt.target.className.includes('delete')) {
+    if (evt.target.className.includes('delete-group')) {
       evt.stopPropagation();
       let $groupDiv = $(evt.target).parents('.group'),
           groupName = $groupDiv.find('.group-name').text();
       if (confirm("Delete group " + groupName + "?")) {
         window.usersRef.child(window.user.userId)
           .child("phoneBook").child("groups").child(groupName).remove();
+      }
+    } else if (evt.target.className.includes('earphone')) {
+      let $contact = $(evt.target).parents('.contact'),
+          callerId = $contact.attr("data-callerid");
+      if (callerId) {
+        window.phoneDirRef.child(callerId).once('value', function (snap) {
+          let caller = snap.val();
+          if (caller) {
+            initiateCall(caller, function (err, result) {
+              if (err) {
+                console.log("ERROR: Initiate call.", err);
+                return;
+              }
+              if (result == true) {
+                console.log("SUCCESS: Call initiated :)");
+              }
+            });// ./ end initiate call()
+          } else {
+            console.log("Caller does not exist on phone directory.", callerId);
+          }
+        });// ./ end get caller details
+      } else {
+        console.log("ERROR: cannot call contact", callerId);
+      }
+    } else if (evt.target.className.includes('trash')) {
+      let $contact = $(evt.target).parents('.contact'),
+          callerId = $contact.attr("data-callerid"),
+          $group = $contact.parents('.group'),
+          groupName = $group.find('.group-name').text();
+      if (callerId) {
+        let groupMembers = Object.keys(window.user.phoneBook.groups[groupName]);
+        if (groupMembers.length == 1) {
+          window.usersRef.child(window.user.userId)
+            .child("phoneBook").child("groups")
+              .child(groupName).set(true);
+        } else {
+          window.usersRef.child(window.user.userId)
+            .child("phoneBook").child("groups")
+              .child(groupName).child(callerId).remove();
+        }
+      } else {
+        console.log("ERROR: cannot delete contact", callerId);
       }
     }
   });
@@ -213,7 +255,7 @@ let setupContactGroupsTab = function () {
           <div class="header" data-toggle="collapse" data-parent="#${contactGroupsTabId}" data-target="#collapse${groupId}" aria-expanded="true" aria-controls="collapse${groupId}">
             <span class="glyphicon glyphicon-triangle-right"></span>
             <span class="group-name">${groupName}</span>
-            <span class="delete">&times;</span>
+            <span class="delete-group">&times;</span>
           </div>
           <div id="collapse${groupId}" class="collapse">
             <div class="body">
@@ -318,7 +360,7 @@ let setupVideoCall = function () {
 let initiateCall = function (caller, done) {
   if (done && typeof done == 'function') {
     hideLeftSlider();
-    window.$videoOverlay.find('.call-msg').text("Calling " + (caller.name || '') + "...");
+    window.$videoOverlay.find('.call-msg').text("Calling " + (caller.username || '') + "...");
     window.$videoOverlay.fadeIn(function () {
       createInitiatorPeerAndOffer(function (err, rtcOfferSDP) {
         if (err) {
@@ -427,7 +469,7 @@ let initiateCall = function (caller, done) {
 }
 let receiveCall = function (caller, offerSDP, done) {
   if (done && typeof done == 'function') {
-    window.$videoOverlay.find('.call-msg').text("Call from " + caller.userId + "...");
+    window.$videoOverlay.find('.call-msg').text("Call from " + caller.username || caller.userId + "...");
     window.$videoOverlay.fadeIn(function () {
       createReceiverPeerConnection(offerSDP, function (err, result) {
         if (err) {
@@ -446,7 +488,7 @@ let receiveCall = function (caller, offerSDP, done) {
 }
 let popupCall = function(caller, done) {
   if (caller && done && (typeof done == 'function')) {
-    let callerName = caller.name || 'Call',
+    let callerName = caller.username || 'Call',
         callerPic = caller.photoURL || "static/img/default-avatar.png",
         popupOverlay = document.createElement('div'),
         callBox = `<div class="call-box margin-auto text-center">

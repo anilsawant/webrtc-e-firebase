@@ -406,7 +406,7 @@ let addIncomingCallListeners = function (usersRef, userId) {
             window.currentCall.callKey = newCallKey;
             if (callStats.state != "CONNECTING") {
               console.log("WARN: invalid call state", callStats.state);
-              phoneDirRef.child(userId).child('call').remove();
+              usersRef.child(userId).child('call').remove();
               window.currentCall = {};
             } else {
               //on success start listening for the call state changes
@@ -466,7 +466,7 @@ let addIncomingCallListeners = function (usersRef, userId) {
                           receiveCall(caller, offerSDP, function (err, initiateResult) {
                             if (err) {
                               console.log("ERROR: intitiate Call", err);
-                              if (err.name == "PermissionDeniedError") {
+                              if (err.name) {
                                 endCallHandler(true);
                               } else {
                                 endCallHandler(false);

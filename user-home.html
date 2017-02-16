@@ -50,7 +50,7 @@
         </nav>
       </div>
       <main class="row full-height pos-rel" style="overflow:hidden;">
-        <section class="left-slider full-height open">
+        <section class="left-slider full-height">
           <span class="toggle-btn glyphicon glyphicon-book" title="Contacts"></span>
           <div class="contacts-container full-height">
             <div class="input-group" style="padding:8px 5px 5px;">
@@ -109,7 +109,32 @@
                   </div> -->
                 </div>
                 <div role="tabpanel" class="tab-pane" id="contactStatusTab">
-                  Status
+                  <div class="group">
+                    <div class="header" data-toggle="collapse" data-parent="#contactStatusTab" data-target="#collapseOnline" aria-expanded="true" aria-controls="collapseOnline">
+                      <span class="glyphicon glyphicon-triangle-right"></span>
+                      <span class="group-name">Online</span>
+                    </div>
+                    <div id="collapseOnline" class="collapse">
+                      <div class="body">
+                        <ul class="contacts">
+                          <span class='contacts-msg'>No contacts online.</span>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="group">
+                    <div class="header" data-toggle="collapse" data-parent="#contactStatusTab" data-target="#collapseBusy" aria-expanded="true" aria-controls="collapseBusy">
+                      <span class="glyphicon glyphicon-triangle-right"></span>
+                      <span class="group-name">Busy</span>
+                    </div>
+                    <div id="collapseBusy" class="collapse">
+                      <div class="body">
+                        <ul class="contacts">
+                          <span class='contacts-msg'>No contacts busy.</span>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div role="tabpanel" class="tab-pane" id="addContactsTab">
                   <input type="text" class="form-control txt-group-name" placeholder="Enter your new group's name here" style="margin-bottom:5px;">
